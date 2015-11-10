@@ -12,7 +12,7 @@ def main():
 	print convertStringTo16Bit(s)
 	#h = encodeHeader("192.168.1.1", 45,"192.168.1.2", 46, 18383847, 38382938, 920, 0, 0, 0, 1, 34, 3847392)
 
-	packet = getPacket("192.168.1.1", 45,"192.168.1.2", 46, 18383847, 38382938, 920, 0, 0, 0, 1, 34, 3847392, "helloworld!!!!!!!!!how'sitgoing")
+	packet = getPacket("0.0.0.0", 50000, "192.68.1.7", 50000, 837, 393, 90, 0, 0, 0, 1, 34, 3847392, "helloworld!!!!!!!!!how'sitgoing")
 	packetX = getPacket("192.168.1.1", 45,"192.168.1.2", 46, 18383847, 38382928, 920, 0, 0, 0, 1, 34, 3847392, "helloworld!!!!!!!!!how.sitgoing")
 	print packet
 	print verifyCheckSum(packet, packetX)
