@@ -1,44 +1,47 @@
 import threading
+import socket
 
 recvWindow = 5
 
 def main():
-
-	r = threading.Thread(target = receiver)
+	recvSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	recvSock.bind(("127.0.0.1", 5005))
+	r = threading.Thread(target = receiver, args= recvSock, 1, 1, 10)
 	r.start()
 
-	s = threading.Thread(target = sender)
+	sendSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	data = "TEST MESSAGE, THIS IS AN EXAMPLE OF DATA THAT CAN BE SENT"
+	s = threading.Thread(target = sender, args= sendSock, data, 1, 1, 10, 5)
 	s.start()
 
 	print "yo"
 
 
-def receiver():
+def receiver(recvSocket, base, sequenceNumber, packetSize):
+	global globalWindow
+	while True:
+		packet, addr = recvSocket.recvfrom(1024)
+		ackPacket = makePacket(0, ACK)
+		if not isCorrupt(packet) and expectedSeqNum(packet, sequenceNumber):
+			header, data = extractData(packet)
+			deliverData(data)
+			ackPacket = makePacket(sequenceNumber, ACK)
+			//send ackPacket
+			expectedSeqNum += 1
+		else:
+			//send ackPacket
 
-	i = 0
-	global recvWindow
 
-	while (True):
+def sender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
+	global globalWindow
+	sent = 0
+	while True:
+		if nextSeqNumber < (base + windowSize):
+			sendSocket.sendto(data, ("127.0.0.1", 5005))
+			if base == nextSeqNumber
+				//startTimer
+			nextSeqNumber += 1
 
-		if (i == 10000000):
-			#print "R"
-			i = 0
-
-		recvWindow += recvWindow * i
-		i += 1
-
-def sender():
-	global recvWindow
-	print "S"
-	print "HI"
-	i = 0
-
-	while (True):
-
-		if (i == 10000000/3):
-			print recvWindow
-			i = 0
-		i += 1
 
 
 
