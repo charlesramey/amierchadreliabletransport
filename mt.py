@@ -17,7 +17,7 @@ def main():
 	print "yo"
 
 
-def receiver(recvSocket, base, sequenceNumber, packetSize):
+def relReceiver(recvSocket, base, sequenceNumber, packetSize):
 	global globalWindow
 	while True:
 		packet, addr = recvSocket.recvfrom(1024)
@@ -32,17 +32,19 @@ def receiver(recvSocket, base, sequenceNumber, packetSize):
 			//send ackPacket
 
 
-def sender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
+def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 	global globalWindow
 	sent = 0
-	while True:
-		if nextSeqNumber < (base + windowSize):
+	while sent < len(data):
+		if nextSeqNumber < (base + 5):
 			sendSocket.sendto(data, ("127.0.0.1", 5005))
 			if base == nextSeqNumber
 				//startTimer
 			nextSeqNumber += 1
 
-
+def unrelReceiver():
+	
+def unrelSender():
 
 def isCorrupt(packet):
 	return False
