@@ -44,6 +44,13 @@ def sender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 
 
 
+def isCorrupt(packet):
+	return False
+
+
+def expectedSeqNum(packet, sequenceNumber):
+	return True
+
 
 if __name__=="__main__":
     main()
