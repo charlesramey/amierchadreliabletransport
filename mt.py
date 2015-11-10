@@ -37,13 +37,14 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 	sent = 0
 	while sent < len(data):
 		if nextSeqNumber < (base + 5):
-			sendSocket.sendto(data, ("127.0.0.1", 5005))
+			sendSocket.sendto(data[:5], ("127.0.0.1", 5005))
 			if base == nextSeqNumber
 				//startTimer
+			data = data[5:]
 			nextSeqNumber += 1
 
 def unrelReceiver():
-	
+
 def unrelSender():
 
 def isCorrupt(packet):
