@@ -1,9 +1,7 @@
-import threading
-import socket
-import header
-import time
+import threading, socket, header, time, Queue
 
 recvWindow = 5
+ackQueue = Queue.Queue()
 
 def main():
 
@@ -64,18 +62,45 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 
 
 def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
-	global globalWindow
+	global globalWindow, ackQueue
+	timer = False
 	sent = 0
 	while sent < len(data):
 		if nextSeqNumber < (base + 5):
 			sendSocket.sendto(data, ("127.0.0.1", 5005))
 			if base == nextSeqNumber:
-				return
-				#//startTimer
+				#startTimer
+				t = threading.Thread(target=unrelReceiver)
+				t.start()
+				timerStart = time.time()
+				timer = True
 			nextSeqNumber += 1
+		
+		else:
+			currentTime = time.time()
+			if timer and int(currentTime-timerStart) > 5:
+				#resend
+				sendSocket.sendto(data, ('127.0.0.1', 5005))
+				#after resend, restart unrelReceiver and timer
+				t = threading.Thread(target=unrelReceiver)
+				t.start()
+				timerStart = time.time()
+			else:
+				ackPacket = recvData
+				if not isCorrupt(ackPacket):
+					base = getAckNumber(ackPacket)+1
+				if base == nextSeqNumber:
+					timer = False
+				else:
+					timer = True
+					timerStart = time.time()
 
-def unrelReceiver():
-	return
+def unrelReceiver(time):
+	global ackQueue
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	sock.bind('127.0.0.1', 6005)
+	data = sock.recv(1024)
+	ackQueue.put(ackQueue)
 	
 def unrelSender():
 	return
