@@ -4,6 +4,8 @@ import header
 import time
 
 recvWindow = 5
+recvTimeOut = None
+recvData = None
 
 def main():
 	recvSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -53,12 +55,28 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 		if nextSeqNumber < (base + 5):
 			sendSocket.sendto(data, ("127.0.0.1", 5005))
 			if base == nextSeqNumber:
-				return
-				#//startTimer
+				#startTimer
+				t = threading.Thread(target=unrelReceiver, args=(5.0))
+				t.start()
 			nextSeqNumber += 1
+		if recvTimeOut == True:
+			#resend
+			#after resend, reset recvTimeOut
+			recvTimeOut = None
+		if recvTimeOut == False
+			ackPacket = recvData
 
-def unrelReceiver():
-	return
+def unrelReceiver(time):
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	sock.bind('127.0.0.1', 6005)
+	sock.settimeout(time)
+	try:
+		data = sock.recv(1024)
+		recvTimeOut = False
+		recvData = data
+		return
+	except socket.timeout:
+		recvTimeOut = True
 	
 def unrelSender():
 	return
