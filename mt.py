@@ -6,9 +6,14 @@ import time
 recvWindow = 5
 
 def main():
+
+	host = "127.0.0.1"
+	port = 5005
+
 	recvSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	recvSock.bind(("127.0.0.1", 5005))
-	r = threading.Thread(target = relReceiver, args= (recvSock, 1, 1, 10) )
+	recvSock.bind((host, port))
+
+	r = threading.Thread(target = relReceiver, args= (host, port, recvSock, 1, 1, 10) )
 	r.start()
 
 	#sendSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -19,25 +24,37 @@ def main():
 	#print "yo"
 
 
-def relReceiver(recvSocket, base, sequenceNumber, packetSize):
+def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 	global globalWindow
 
+	setFirst = False
+	expectedSeqNum = 0
+	ackPacket = None
+
 	while True:
-		packet, addr = recvSocket.recvfrom(1024)
-		ackPacket = ackPacket = makePacket("127.0.0.1", 5005, addr[0], addr[1], 0, 0, 0, 0, 1, 0, 0, getReceiveWindow(), 100000, "xxx")
+		packet = recvSocket.recvfrom(1024)[0]
+		packList = getPacket(packet)
 
-		if not isCorrupt(packet) and isExpectedSeqNum(packet, sequenceNumber):
+		packetIsFirst = isFirst(packList)
+		packetIsLast = isLast(packList)
 
-			packList = getPacket(packet)
+		print packetIsFirst
+
+		if not isCorrupt(packet) and setFirst == False and packetIsFirst:
+			setFirst = True
+			expectedSeqNum = getPacketAttribute(packList, "seqNum")
+
+		if setFirst and not isCorrupt(packet) and isExpectedSeqNum(packList, expectedSeqNum):
+
+			print "hi"
 			data = getPacketAttribute(packList, "payload")
 			receivedSeqNum = getPacketAttribute(packList, "seqNum")
-			addr = (addr[0], getPacketAttribute(packList, "sourcePort"))
+			addr = (getPacketAttribute(packList, "sourceIP"), getPacketAttribute(packList, "sourcePort"))
 
 			deliverData(data)
 
-			expectedSeqNum = receivedSeqNum + 1
-
-			ackPacket = makePacket("127.0.0.1", 5005, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, getReceiveWindow(), 100000, "xxx")
+			expectedSeqNum += 1
+			ackPacket = makePacket(selfIP, selfPort, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, 0, getReceiveWindow(), 100000, "xxx")
 			recvSocket.sendto(ackPacket, addr)
 
 			print "We got SEQ:"+str(expectedSeqNum)
@@ -67,9 +84,14 @@ def unrelSender():
 def isCorrupt(packet):
 	return False
 
+def isFirst(packList):
+	return getPacketAttribute(packList, "FIRST") == 1
 
-def isExpectedSeqNum(packet, sequenceNumber):
-	return True
+def isLast(packList):
+	return getPacketAttribute(packList, "LAST") == 1
+
+def isExpectedSeqNum(packetList, sequenceNumber):
+	return (getPacketAttribute(packetList, "seqNum") == sequenceNumber)
 
 def getReceiveWindow():
 	return 10
@@ -77,8 +99,8 @@ def getReceiveWindow():
 def deliverData(data):
 	print "RECEIVED:"+data
 
-def makePacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, recvWindow, timeStamp, payload):
-	return header.getPacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, recvWindow, timeStamp, payload)
+def makePacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload):
+	return header.getPacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload)
 
 def getPacket(packet):
 	return header.decodePacket(packet)
@@ -86,6 +108,7 @@ def getPacket(packet):
 def getPacketAttribute(packList, attribute):
 
 	if (attribute == "sourceIP"):
+		print packList[0]
 		return packList[0]
 	if (attribute == "sourcePort"):
 		return int(packList[1])
@@ -107,12 +130,14 @@ def getPacketAttribute(packList, attribute):
 		return int(packList[9])
 	if (attribute == "LAST"):
 		return int(packList[10])
-	if (attribute == "recvWindow"):
+	if (attribute == "FIRST"):
 		return int(packList[11])
+	if (attribute == "recvWindow"):
+		return int(packList[12])
 	if (attribute == "timeStamp"):
-		return long(packList[12])
+		return long(packList[13])
 	if (attribute == "payload"):
-		return packList[13]
+		return packList[14]
 
 
 

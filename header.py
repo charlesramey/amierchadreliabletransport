@@ -19,14 +19,14 @@ def main():
 
 
 
-def getPacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, recvWindow, timeStamp, payload):
+def getPacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload):
 
-	h = encodeHeader(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, recvWindow, timeStamp)
+	h = encodeHeader(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp)
 	checkSum = calculateCheckSum(h, payload)
 	p = h+str(checkSum)+payload
 	return p
 
-def encodeHeader(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, recvWindow, timeStamp):
+def encodeHeader(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp):
 	
 	header = convertIPToString(sourceIP)
 	header += convert16BitToString(sourcePort)
@@ -35,7 +35,7 @@ def encodeHeader(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfP
 
 	header += convert32BitToString(seqNum)
 	header += convert32BitToString(ackNum)
-	header += packFlagsAndSize(sizeOfPayload, SYN, ACK, FIN, LAST)
+	header += packFlagsAndSize(sizeOfPayload, SYN, ACK, FIN, LAST, FIRST)
 
 	header += convert16BitToString(recvWindow)
 	header += convert32BitToString(timeStamp)
@@ -66,11 +66,12 @@ def decodeHeader(string):
 	ACK = flagsAndSize[2]
 	FIN = flagsAndSize[3]
 	LAST = flagsAndSize[4]
+	FIRST = flagsAndSize[5]
 
 	recvWindow = convertStringTo16Bit(string[22:24])
 	timeStamp = convertStringToInt(string[24:28])
 
-	out = [sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, recvWindow, timeStamp]
+	out = [sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp]
 	return out
 
 def verifyCheckSum(packetA, packetB):
@@ -139,13 +140,14 @@ def convertStringTo32Bit(string):
 	out = (ord(string[0]) << 8) | ord(string[1])
 	return out
 
-def packFlagsAndSize(sizeOfPayload, SYN, ACK, FIN, LAST):
+def packFlagsAndSize(sizeOfPayload, SYN, ACK, FIN, LAST, FIRST):
 
 	num = sizeOfPayload << 6
 	num |= SYN << 5
 	num |= ACK << 4
 	num |= FIN << 3
 	num |= LAST << 2 
+	num |= FIRST << 1
 
 	return convert16BitToString(num)
 
@@ -158,8 +160,9 @@ def unpackFlagsAndSize(string):
 	ACK = (num >> 4) & 1
 	FIN = (num >> 3) & 1
 	LAST = (num >> 2) & 1 
+	FIRST = (num >> 1) & 1 
 
-	return [sizeOfPayload, SYN, ACK, FIN, LAST]
+	return [sizeOfPayload, SYN, ACK, FIN, LAST, FIRST]
 
 def isValidIP(ipAddress):
 	return True
