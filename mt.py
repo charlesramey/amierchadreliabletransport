@@ -63,14 +63,19 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 
 def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 	global globalWindow, ackQueue
+	selfIP = '127.0.0.1'
+	selfPort = 6005
 	timer = False
 	sent = 0
+	baseSeqNum = nextSeqNumber
+	baseBase = base
 	recvSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	sock.bind('127.0.0.1', 6005)
 	dataList = messageSplit(data, 5)
 	while sent < len(dataList):
 		if nextSeqNumber < (base + 5):
-			sendSocket.sendto(data[sent], ("127.0.0.1", 5005))
+			sendPacket = makePacket(selfIP, selfPort, '127.0.0.1', 5005, 0, nextSeqNumber, 5, 0, 0, 0, 0, 0, getReceiveWindow(), 100000, data[nextSeqNumber-baseSeqNum])
+			sendSocket.sendto(sendPacket, ("127.0.0.1", 5005))
 			sent += 1
 			if base == nextSeqNumber:
 				#startTimer
@@ -85,7 +90,10 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 			if timer and int(currentTime-timerStart) > 5:
 				#resend
 				#Data takes the place of all packets from base to nextSeqNum-1
-				sendSocket.sendto(data, ('127.0.0.1', 5005))
+				packetNum = base-baseBase
+				while packetNum < ((nextSeqNumber-baseSeqNum)-1):
+					sendPacket = makePacket(selfIP, selfPort, '127.0.0.1', 5005, 0, base+packetNum, 5, 0, 0, 0, 0, 0, getReceiveWindow(), 100000, data[packetNum])
+					sendSocket.sendto(data, ('127.0.0.1', 5005))
 				#after resend, restart unrelReceiver and timer
 				t = threading.Thread(target=unrelReceiver, args(recvSocket))
 				t.start()
