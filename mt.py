@@ -67,9 +67,11 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 	sent = 0
 	recvSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	sock.bind('127.0.0.1', 6005)
-	while sent < len(data):
+	dataList = messageSplit(data, 5)
+	while sent < len(dataList):
 		if nextSeqNumber < (base + 5):
-			sendSocket.sendto(data, ("127.0.0.1", 5005))
+			sendSocket.sendto(data[sent], ("127.0.0.1", 5005))
+			sent += 1
 			if base == nextSeqNumber:
 				#startTimer
 				t = threading.Thread(target=unrelReceiver, args=(recvSocket))
