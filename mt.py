@@ -93,8 +93,12 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 				timer = True
 			else:
 				ackPacket = ackQueue.get()
+				
 				if not isCorrupt(ackPacket) and isExpectedSeqNum(ackPacket):
-					base = getAckNumber(ackPacket)+1
+
+					packList = getPacket(ackPacket)
+					base = getPacketAttribute(packList, "ackNum")+1
+
 				if base == nextSeqNumber:
 					timer = False
 				else:
