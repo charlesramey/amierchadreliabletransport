@@ -85,6 +85,7 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 				t = threading.Thread(target=unrelReceiver)
 				t.start()
 				timerStart = time.time()
+				timer = True
 			else:
 				ackPacket = recvData
 				if not isCorrupt(ackPacket):
@@ -105,6 +106,14 @@ def unrelReceiver(time):
 def unrelSender():
 	return
 
+def messageSplit(message, size):
+
+	out = []
+	for i in range(0, len(message)):
+		out.append(message[i:i + size])
+		i += size
+
+	return out
 
 def isCorrupt(packet):
 	return False
