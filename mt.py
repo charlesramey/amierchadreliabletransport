@@ -3,6 +3,13 @@ import threading, socket, header, time, Queue
 recvWindow = 5
 ackQueue = Queue.Queue()
 
+sourceIP = '127.0.0.1'
+sourcePort = 5005
+destIP = '127.0.0.1'
+destPort = 6005
+seqNum = 0
+ackNum = 0
+
 def main():
 
 	host = "127.0.0.1"
@@ -149,8 +156,6 @@ def getReceiveWindow():
 def deliverData(data):
 	print "RECEIVED:"+data
 
-def makePacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload):
-	return header.getPacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload)
 
 def getPacket(packet):
 	return header.decodePacket(packet)
