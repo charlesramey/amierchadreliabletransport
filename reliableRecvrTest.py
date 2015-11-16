@@ -25,7 +25,7 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 
 		packetIsFirst = isFirst(packList)
 		packetIsLast = isLast(packList)
-
+		
 		print packetIsFirst
 
 		if not isCorrupt(packet) and setFirst == False and packetIsFirst:
@@ -38,7 +38,7 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 			data = getPacketAttribute(packList, "payload")
 			receivedSeqNum = getPacketAttribute(packList, "seqNum")
 			addr = (getPacketAttribute(packList, "sourceIP"), getPacketAttribute(packList, "sourcePort"))
-
+			print 
 			deliverData(data)
 
 			expectedSeqNum += 1
