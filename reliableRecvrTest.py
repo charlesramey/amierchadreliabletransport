@@ -1,4 +1,4 @@
-import threading, socket, header, time, Queue
+ import threading, socket, header, time, Queue
 
 globalWindow = 5
 
@@ -48,7 +48,8 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 			print "We got SEQ:"+str(expectedSeqNum)
 			
 		else:
-			recvSocket.sendto(ackPacket, addr)
+			if (setFirst):
+				recvSocket.sendto(ackPacket, addr)
 
 def unrelReceiver(sock):
 	global ackQueue
