@@ -12,60 +12,65 @@ def main():
 def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 	global globalWindow, ackQueue
 	selfIP = '127.0.0.1'
-	selfPort = 6005
+	selfPort = 6050
 	timer = False
 	sent = 0
 	baseSeqNum = nextSeqNumber
 	baseBase = base
-	recvSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	recvSocket.bind((selfIP, selfPort))
+	recvSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	dataList = messageSplit(data, 5)
+	t = threading.Thread(target=unrelReceiver, args=(recvSocket, selfIP, selfPort))
+	t.start()
+	firstsent = 1
 	while sent < len(dataList):
 		if nextSeqNumber < (base + 5):
-			sendPacket = makePacket(selfIP, selfPort, '127.0.0.1', 5005, 0, nextSeqNumber, 5, 0, 0, 0, 0, 0, getReceiveWindow(), 100000, data[nextSeqNumber-baseSeqNum])
+			sendPacket = makePacket(selfIP, selfPort, '127.0.0.1', 5005, nextSeqNumber, nextSeqNumber, 5, 0, 0, 0, 0, firstsent, getReceiveWindow(), 100000, data[nextSeqNumber-baseSeqNum])
 			sendSocket.sendto(sendPacket, ("127.0.0.1", 5005))
+			firstsent = 0
 			sent += 1
 			if base == nextSeqNumber:
 				#startTimer
-				t = threading.Thread(target=unrelReceiver, args=(recvSocket,))
-				t.start()
 				timerStart = time.time()
 				timer = True
+				print "base == nextSeqNumber, timer started"
 			nextSeqNumber += 1
 		
 		else:
 			currentTime = time.time()
 			if timer and int(currentTime-timerStart) > 5:
+				print "Timer timed out"
 				#resend
 				#Data takes the place of all packets from base to nextSeqNum-1
 				packetNum = base-baseBase
 				while packetNum < ((nextSeqNumber-baseSeqNum)-1):
-					sendPacket = makePacket(selfIP, selfPort, '127.0.0.1', 5005, 0, base+packetNum, 5, 0, 0, 0, 0, 0, getReceiveWindow(), 100000, data[packetNum])
+					sendPacket = makePacket(selfIP, selfPort, '127.0.0.1', 5005, nextSeqNumber, base+packetNum, 5, 0, 0, 0, 0, 0, getReceiveWindow(), 100000, data[packetNum])
 					sendSocket.sendto(data, ('127.0.0.1', 5005))
 				#after resend, restart unrelReceiver and timer
-				t = threading.Thread(target=unrelReceiver, args=(recvSocket,))
-				t.start()
 				timerStart = time.time()
 				timer = True
 			else:
 				ackPacket = ackQueue.get()
-				
-				if not isCorrupt(ackPacket) and isExpectedSeqNum(ackPacket):
-
-					packList = getPacket(ackPacket)
+				packList = getPacket(ackPacket)
+				if not isCorrupt(ackPacket):
+					print
 					base = getPacketAttribute(packList, "ackNum")+1
-
+					print "GOT ACK"
+					print "base = %d" %(base)
+					print getPacketAttribute(packList, "payload")
 				if base == nextSeqNumber:
+					print "ACK base == nextSeqNumber, timer stoping"
 					timer = False
 				else:
 					timer = True
 					timerStart = time.time()
 
-def unrelReceiver(sock):
+def unrelReceiver(sock, IP, PORT):
 	global ackQueue
-	data = sock.recv(1024)
-	ackQueue.put(ackQueue)
-	return 
+	sock.bind((IP, PORT))
+	print "BOUND"
+	while True:
+		data, addr = sock.recvfrom(1024)
+		ackQueue.put(data) 
 
 def unrelSender():
 	return
