@@ -1,4 +1,4 @@
- import threading, socket, header, time, Queue
+import threading, socket, header, time, Queue
 
 globalWindow = 5
 
@@ -25,7 +25,7 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 
 		packetIsFirst = isFirst(packList)
 		packetIsLast = isLast(packList)
-
+		print "HERRO"
 		print packetIsFirst
 
 		if not isCorrupt(packet) and setFirst == False and packetIsFirst:
@@ -38,13 +38,13 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 			data = getPacketAttribute(packList, "payload")
 			receivedSeqNum = getPacketAttribute(packList, "seqNum")
 			addr = (getPacketAttribute(packList, "sourceIP"), getPacketAttribute(packList, "sourcePort"))
-
+			print 
 			deliverData(data)
 
 			expectedSeqNum += 1
 			ackPacket = makePacket(selfIP, selfPort, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, 0, getReceiveWindow(), 100000, "xxx")
 			recvSocket.sendto(ackPacket, addr)
-
+			print "expectedSeqNum: %d" %(expectedSeqNum)
 			print "We got SEQ:"+str(expectedSeqNum)
 			
 		else:
