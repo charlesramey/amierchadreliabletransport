@@ -3,70 +3,11 @@ import threading, socket, header, time, Queue
 globalWindow = 5
 ackQueue = Queue.Queue()
 
-sourceIP = '127.0.0.1'
-sourcePort = 5005
-destIP = '127.0.0.1'
-destPort = 6005
-seqNum = 0
-ackNum = 0
-
 def main():
-
-	host = "127.0.0.1"
-	port = 5005
-
-	recvSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	recvSock.bind((host, port))
-
-	r = threading.Thread(target = relReceiver, args= (host, port, recvSock, 1, 1, 10) )
-	r.start()
-
-	#sendSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	#data = "TEST MESSAGE, THIS IS AN EXAMPLE OF DATA THAT CAN BE SENT"
-	#s = threading.Thread(target = relSender, args= (sendSock, data, 1, 1, 10, 5) )
-	#s.start()
-
-	#print "yo"
-
-
-def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
-	global globalWindow
-
-	setFirst = False
-	expectedSeqNum = 0
-	ackPacket = None
-
-	while True:
-		packet = recvSocket.recvfrom(1024)[0]
-		packList = getPacket(packet)
-
-		packetIsFirst = isFirst(packList)
-		packetIsLast = isLast(packList)
-
-		print packetIsFirst
-
-		if not isCorrupt(packet) and setFirst == False and packetIsFirst:
-			setFirst = True
-			expectedSeqNum = getPacketAttribute(packList, "seqNum")
-
-		if setFirst and not isCorrupt(packet) and isExpectedSeqNum(packList, expectedSeqNum):
-
-			print "hi"
-			data = getPacketAttribute(packList, "payload")
-			receivedSeqNum = getPacketAttribute(packList, "seqNum")
-			addr = (getPacketAttribute(packList, "sourceIP"), getPacketAttribute(packList, "sourcePort"))
-
-			deliverData(data)
-
-			expectedSeqNum += 1
-			ackPacket = makePacket(selfIP, selfPort, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, 0, getReceiveWindow(), 100000, "xxx")
-			recvSocket.sendto(ackPacket, addr)
-
-			print "We got SEQ:"+str(expectedSeqNum)
-			
-		else:
-			recvSocket.sendto(ackPacket, addr)
-
+	sendSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	data = "TEST MESSAGE, THIS IS AN EXAMPLE OF DATA THAT CAN BE SENT"
+	s = threading.Thread(target = relSender, args= (sendSock, data, 1, 1, 10, 5) )
+	s.start()
 
 def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 	global globalWindow, ackQueue
@@ -86,7 +27,7 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 			sent += 1
 			if base == nextSeqNumber:
 				#startTimer
-				t = threading.Thread(target=unrelReceiver, args=(recvSocket))
+				t = threading.Thread(target=unrelReceiver, args=(recvSocket,))
 				t.start()
 				timerStart = time.time()
 				timer = True
@@ -102,7 +43,7 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 					sendPacket = makePacket(selfIP, selfPort, '127.0.0.1', 5005, 0, base+packetNum, 5, 0, 0, 0, 0, 0, getReceiveWindow(), 100000, data[packetNum])
 					sendSocket.sendto(data, ('127.0.0.1', 5005))
 				#after resend, restart unrelReceiver and timer
-				t = threading.Thread(target=unrelReceiver, args=(recvSocket))
+				t = threading.Thread(target=unrelReceiver, args=(recvSocket,))
 				t.start()
 				timerStart = time.time()
 				timer = True
@@ -156,6 +97,8 @@ def getReceiveWindow():
 def deliverData(data):
 	print "RECEIVED:"+data
 
+def makePacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload):
+	return header.getPacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload)
 
 def getPacket(packet):
 	return header.decodePacket(packet)

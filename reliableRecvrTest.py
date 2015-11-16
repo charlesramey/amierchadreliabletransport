@@ -1,33 +1,16 @@
 import threading, socket, header, time, Queue
 
 globalWindow = 5
-ackQueue = Queue.Queue()
-
-sourceIP = '127.0.0.1'
-sourcePort = 5005
-destIP = '127.0.0.1'
-destPort = 6005
-seqNum = 0
-ackNum = 0
 
 def main():
-
 	host = "127.0.0.1"
 	port = 5005
 
 	recvSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	recvSock.bind((host, port))
-
+	print "Starting receiver"
 	r = threading.Thread(target = relReceiver, args= (host, port, recvSock, 1, 1, 10) )
 	r.start()
-
-	#sendSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	#data = "TEST MESSAGE, THIS IS AN EXAMPLE OF DATA THAT CAN BE SENT"
-	#s = threading.Thread(target = relSender, args= (sendSock, data, 1, 1, 10, 5) )
-	#s.start()
-
-	#print "yo"
-
 
 def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 	global globalWindow
@@ -67,59 +50,6 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 		else:
 			recvSocket.sendto(ackPacket, addr)
 
-
-def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
-	global globalWindow, ackQueue
-	selfIP = '127.0.0.1'
-	selfPort = 6005
-	timer = False
-	sent = 0
-	baseSeqNum = nextSeqNumber
-	baseBase = base
-	recvSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	recvSocket.bind((selfIP, selfPort))
-	dataList = messageSplit(data, 5)
-	while sent < len(dataList):
-		if nextSeqNumber < (base + 5):
-			sendPacket = makePacket(selfIP, selfPort, '127.0.0.1', 5005, 0, nextSeqNumber, 5, 0, 0, 0, 0, 0, getReceiveWindow(), 100000, data[nextSeqNumber-baseSeqNum])
-			sendSocket.sendto(sendPacket, ("127.0.0.1", 5005))
-			sent += 1
-			if base == nextSeqNumber:
-				#startTimer
-				t = threading.Thread(target=unrelReceiver, args=(recvSocket))
-				t.start()
-				timerStart = time.time()
-				timer = True
-			nextSeqNumber += 1
-		
-		else:
-			currentTime = time.time()
-			if timer and int(currentTime-timerStart) > 5:
-				#resend
-				#Data takes the place of all packets from base to nextSeqNum-1
-				packetNum = base-baseBase
-				while packetNum < ((nextSeqNumber-baseSeqNum)-1):
-					sendPacket = makePacket(selfIP, selfPort, '127.0.0.1', 5005, 0, base+packetNum, 5, 0, 0, 0, 0, 0, getReceiveWindow(), 100000, data[packetNum])
-					sendSocket.sendto(data, ('127.0.0.1', 5005))
-				#after resend, restart unrelReceiver and timer
-				t = threading.Thread(target=unrelReceiver, args=(recvSocket))
-				t.start()
-				timerStart = time.time()
-				timer = True
-			else:
-				ackPacket = ackQueue.get()
-				
-				if not isCorrupt(ackPacket) and isExpectedSeqNum(ackPacket):
-
-					packList = getPacket(ackPacket)
-					base = getPacketAttribute(packList, "ackNum")+1
-
-				if base == nextSeqNumber:
-					timer = False
-				else:
-					timer = True
-					timerStart = time.time()
-
 def unrelReceiver(sock):
 	global ackQueue
 	data = sock.recv(1024)
@@ -156,6 +86,8 @@ def getReceiveWindow():
 def deliverData(data):
 	print "RECEIVED:"+data
 
+def makePacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload):
+	return header.getPacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload)
 
 def getPacket(packet):
 	return header.decodePacket(packet)
