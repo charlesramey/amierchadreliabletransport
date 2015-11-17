@@ -1,6 +1,7 @@
-import threading, socket, header, time, Queue
+import threading, socket, header, time, Queue, random
 
 globalWindow = 5
+randomPacketDropping = False
 
 def main():
 	host = "127.0.0.1"
@@ -70,6 +71,8 @@ def messageSplit(message, size):
 	return out
 
 def isCorrupt(packet):
+	if (randomPacketDropping and random.random() > 0.8):
+		return True
 	return False
 
 def isFirst(packList):
