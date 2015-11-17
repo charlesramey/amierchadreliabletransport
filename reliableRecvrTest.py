@@ -27,8 +27,14 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 		packet = Packet()
 		packet.createPacketFromString(recvSocket.recvfrom(1024)[0])
 
+<<<<<<< HEAD
 		packetIsFirst = packet.isFirst()
 		packetIsLast = packet.isLast()
+=======
+		packetIsFirst = isFirst(packList)
+		packetIsLast = isLast(packList)
+		print packetIsFirst
+>>>>>>> 7c6e6849ffdfeb36ee74020e216ef3376e82e7ab
 
 		if not isCorrupt(packet) and setFirst == False and packetIsFirst:
 			setFirst = True
@@ -36,17 +42,22 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 
 		if setFirst and not isCorrupt(packet) and packet.isExpectedSeqNum(expectedSeqNum):
 
+<<<<<<< HEAD
 			print "hi"
 			data = packet.payload
 			receivedSeqNum = packet.seqNum
 			addr = (packet.sourceIP, packet.sourcePort)
 
+=======
+			data = getPacketAttribute(packList, "payload")
+			receivedSeqNum = getPacketAttribute(packList, "seqNum")
+			addr = (getPacketAttribute(packList, "sourceIP"), getPacketAttribute(packList, "sourcePort")) 
+>>>>>>> 7c6e6849ffdfeb36ee74020e216ef3376e82e7ab
 			deliverData(data)
 
 			expectedSeqNum += 1
 			ackPacket = makePacket(selfIP, selfPort, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, 0, getReceiveWindow(), 100000, "xxx")
 			recvSocket.sendto(ackPacket, addr)
-			print "expectedSeqNum: %d" %(expectedSeqNum)
 			print "We got SEQ:"+str(expectedSeqNum)
 			
 		else:

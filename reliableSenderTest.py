@@ -54,9 +54,8 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 				if not isCorrupt(ackPacket):
 					print
 					base = getPacketAttribute(packList, "ackNum")+1
-					print "GOT ACK"
 					print "base = %d" %(base)
-					print getPacketAttribute(packList, "payload")
+					print "nextSeqNumber: %d" %(nextSeqNumber)
 				if base == nextSeqNumber:
 					print "ACK base == nextSeqNumber, timer stoping"
 					timer = False
