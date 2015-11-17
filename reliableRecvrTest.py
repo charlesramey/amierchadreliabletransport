@@ -1,7 +1,10 @@
-import threading, socket, header, time, Queue, random
+import threading, socket, header, time, Queue, random, dataqueue, packet
 
 globalWindow = 5
 randomPacketDropping = False
+
+dataQueue = DataQueue()
+bufferSize = 5
 
 def main():
 	host = "127.0.0.1"
@@ -21,25 +24,23 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 	ackPacket = None
 
 	while True:
-		packet = recvSocket.recvfrom(1024)[0]
-		packList = getPacket(packet)
+		packet = Packet()
+		packet.createPacketFromString(recvSocket.recvfrom(1024)[0])
 
-		packetIsFirst = isFirst(packList)
-		packetIsLast = isLast(packList)
-		print "HERRO"
-		print packetIsFirst
+		packetIsFirst = packet.isFirst()
+		packetIsLast = packet.isLast()
 
 		if not isCorrupt(packet) and setFirst == False and packetIsFirst:
 			setFirst = True
 			expectedSeqNum = getPacketAttribute(packList, "seqNum")
 
-		if setFirst and not isCorrupt(packet) and isExpectedSeqNum(packList, expectedSeqNum):
+		if setFirst and not isCorrupt(packet) and packet.isExpectedSeqNum(expectedSeqNum):
 
 			print "hi"
-			data = getPacketAttribute(packList, "payload")
-			receivedSeqNum = getPacketAttribute(packList, "seqNum")
-			addr = (getPacketAttribute(packList, "sourceIP"), getPacketAttribute(packList, "sourcePort"))
-			print 
+			data = packet.payload
+			receivedSeqNum = packet.seqNum
+			addr = (packet.sourceIP, packet.sourcePort)
+
 			deliverData(data)
 
 			expectedSeqNum += 1
@@ -89,6 +90,8 @@ def getReceiveWindow():
 
 def deliverData(data):
 	print "RECEIVED:"+data
+
+	if (len(dataQueue) >)
 
 def makePacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload):
 	return header.getPacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload)

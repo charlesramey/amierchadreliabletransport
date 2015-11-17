@@ -1,5 +1,11 @@
 import header
 
+
+def main():
+	p = Packet()
+	print p.sourceIP
+
+
 class Packet:
 
 	def __init__(self):
@@ -41,7 +47,7 @@ class Packet:
 	def makePacket(self, sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload):
 		return header.getPacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload)
 
-	def createPacketFromString(self):
+	def createPacketFromString(self, packet):
 		packList = header.decodePacket(packet)
 		self.sourceIP = packList[0]
 		self.sourcePort = packList[1]
@@ -91,3 +97,15 @@ class Packet:
 			return long(packList[13])
 		if (attribute == "payload"):
 			return packList[14]
+
+	def isFirst(self):
+		return self.FIRST == 1
+
+	def isLast(self):
+		return self.LAST == 1
+
+	def isExpectedSeqNum(self, expectedSeqNum):
+		return (self.seqNum == expectedSeqNum)
+
+if __name__=="__main__":
+    main()
