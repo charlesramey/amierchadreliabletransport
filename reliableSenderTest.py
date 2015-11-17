@@ -6,7 +6,7 @@ ackQueue = Queue.Queue()
 def main():
 	sendSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	data = "TEST MESSAGE, THIS IS AN EXAMPLE OF DATA THAT CAN BE SENT"
-	s = threading.Thread(target = relSender, args= (sendSock, data, 1, 1, 10, 5) )
+	s = threading.Thread(target = relSender, args= (sendSock, data, 0, 0, 10, 5) )
 	s.start()
 
 def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
@@ -19,13 +19,21 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 	baseBase = base
 	recvSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	dataList = messageSplit(data, 5)
+	print dataList
 	t = threading.Thread(target=unrelReceiver, args=(recvSocket, selfIP, selfPort))
 	t.start()
 	firstsent = 1
+	unAckedPackets = []
 	while sent < len(dataList):
 		if nextSeqNumber < (base + 5):
-			sendPacket = makePacket(selfIP, selfPort, '127.0.0.1', 5005, nextSeqNumber, nextSeqNumber, 5, 0, 0, 0, 0, firstsent, getReceiveWindow(), 100000, data[nextSeqNumber-baseSeqNum])
+			packetNumber = nextSeqNumber-baseSeqNum
+			print "Sending: %s" %(dataList[packetNumber])
+			sendPacket = makePacket(
+					selfIP, selfPort, '127.0.0.1', 5005, nextSeqNumber, nextSeqNumber,
+					5, 0, 0, 0, 0, firstsent, getReceiveWindow(), 100000, dataList[packetNumber]
+				)
 			sendSocket.sendto(sendPacket, ("127.0.0.1", 5005))
+			unAckedPackets.append(packetNumber)
 			firstsent = 0
 			sent += 1
 			if base == nextSeqNumber:
@@ -37,15 +45,25 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 		
 		else:
 			currentTime = time.time()
-			print int(currentTime - timerStart)
+			print int(currentTime-timerStart)
 			if timer and int(currentTime-timerStart) > 5:
 				print "Timer timed out"
 				#resend
 				#Data takes the place of all packets from base to nextSeqNum-1
-				packetNum = base-baseBase
-				while packetNum < ((nextSeqNumber-baseSeqNum)-1):
-					sendPacket = makePacket(selfIP, selfPort, '127.0.0.1', 5005, nextSeqNumber, base+packetNum, 5, 0, 0, 0, 0, 0, getReceiveWindow(), 100000, data[packetNum])
-					sendSocket.sendto(data, ('127.0.0.1', 5005))
+				#packetNum = base + 1
+				#print "packetNum: %d" %(packetNum)
+				#print "(nextSeqNumber): %d" %(nextSeqNumber)
+				#while base + packetNum < (nextSeqNumber):
+				#	print "RE-Sending: %s" %(data[packetNum-baseSeqNum])
+				for packetNum in unAckedPackets:
+					print "RE-Sending: %s" %(dataList[packetNum])
+					sendPacket = makePacket(
+							selfIP, selfPort, '127.0.0.1', 5005, packetNum,
+							packetNum, 5, 0, 0, 0, 0, firstsent, getReceiveWindow(),
+							100000, dataList[packetNum]
+						)
+					sendSocket.sendto(sendPacket, ('127.0.0.1', 5005))
+					firstsent = 0
 				#after resend, restart unrelReceiver and timer
 				print "TIMER RESTARTED AFTER RESEND"
 				timerStart = time.time()
@@ -56,7 +74,10 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 					packList = getPacket(ackPacket)
 					if not isCorrupt(ackPacket):
 						print
-						base = getPacketAttribute(packList, "ackNum")+1
+						ackNum =  getPacketAttribute(packList, "ackNum")
+						base = ackNum + 1
+						if ackNum in unAckedPackets:
+							unAckedPackets.remove(ackNum)
 						print "base = %d" %(base)
 						print "nextSeqNumber: %d" %(nextSeqNumber)
 					if base == nextSeqNumber:
@@ -70,7 +91,6 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 def unrelReceiver(sock, IP, PORT):
 	global ackQueue
 	sock.bind((IP, PORT))
-	print "BOUND"
 	while True:
 		data, addr = sock.recvfrom(1024)
 		ackQueue.put(data) 
@@ -81,7 +101,8 @@ def unrelSender():
 def messageSplit(message, size):
 
 	out = []
-	for i in range(0, len(message)):
+	i = 0
+	while(i < len(message)):
 		out.append(message[i:i + size])
 		i += size
 
