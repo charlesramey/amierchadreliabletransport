@@ -37,6 +37,7 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 		
 		else:
 			currentTime = time.time()
+			print int(currentTime - timerStart)
 			if timer and int(currentTime-timerStart) > 5:
 				print "Timer timed out"
 				#resend
@@ -46,22 +47,25 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
 					sendPacket = makePacket(selfIP, selfPort, '127.0.0.1', 5005, nextSeqNumber, base+packetNum, 5, 0, 0, 0, 0, 0, getReceiveWindow(), 100000, data[packetNum])
 					sendSocket.sendto(data, ('127.0.0.1', 5005))
 				#after resend, restart unrelReceiver and timer
+				print "TIMER RESTARTED AFTER RESEND"
 				timerStart = time.time()
 				timer = True
 			else:
-				ackPacket = ackQueue.get()
-				packList = getPacket(ackPacket)
-				if not isCorrupt(ackPacket):
-					print
-					base = getPacketAttribute(packList, "ackNum")+1
-					print "base = %d" %(base)
-					print "nextSeqNumber: %d" %(nextSeqNumber)
-				if base == nextSeqNumber:
-					print "ACK base == nextSeqNumber, timer stoping"
-					timer = False
-				else:
-					timer = True
-					timerStart = time.time()
+				if not ackQueue.empty():
+					ackPacket = ackQueue.get()
+					packList = getPacket(ackPacket)
+					if not isCorrupt(ackPacket):
+						print
+						base = getPacketAttribute(packList, "ackNum")+1
+						print "base = %d" %(base)
+						print "nextSeqNumber: %d" %(nextSeqNumber)
+					if base == nextSeqNumber:
+						print "ACK base == nextSeqNumber, timer stoping"
+						timer = False
+					else:
+						print "restarting timer"
+						timer = True
+						timerStart = time.time()
 
 def unrelReceiver(sock, IP, PORT):
 	global ackQueue

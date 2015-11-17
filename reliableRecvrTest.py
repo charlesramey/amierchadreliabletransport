@@ -1,7 +1,7 @@
 import threading, socket, header, time, Queue, random, dataqueue, packet
 
 globalWindow = 5
-randomPacketDropping = False
+randomPacketDropping = True
 
 dataQueue = DataQueue()
 bufferSize = 5
@@ -22,6 +22,7 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 	setFirst = False
 	expectedSeqNum = 0
 	ackPacket = None
+	addr = None
 
 	while True:
 		packet = Packet()
@@ -61,13 +62,13 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 			print "We got SEQ:"+str(expectedSeqNum)
 			
 		else:
-			if (setFirst):
+			if (setFirst) and addr:
 				recvSocket.sendto(ackPacket, addr)
 
 def unrelReceiver(sock):
 	global ackQueue
 	data = sock.recv(1024)
-	ackQueue.put(ackQueue)
+	ackQueue.put(data)
 	return 
 
 def unrelSender():
