@@ -12,8 +12,9 @@ def main():
 	print convertStringTo16Bit(s)
 	#h = encodeHeader("192.168.1.1", 45,"192.168.1.2", 46, 18383847, 38382938, 920, 0, 0, 0, 1, 34, 3847392)
 
-	packet = getPacket("0.0.0.0", 50000, "192.68.1.7", 50000, 837, 393, 90, 0, 0, 0, 0, 1, 34, 3847392, "helloworld!!!!!!!!!how'sitgoing")
+	packet = getPacket("0.0.0.0", 50000, "192.68.1.7", 50000, 837, 393, 90, 0, 0, 0, 0, 1, 34, 3847392, "helloworld!!!YOOhskjhfjksdhfOO")
 	packetX = getPacket("192.168.1.1", 45,"192.168.1.2", 46, 18383847, 38382928, 920, 0, 0, 0, 0, 1, 34, 3847392, "helloworld!!!!!!!!!how.sitgoing")
+	print packet
 	print decodePacket(packet)
 	#print verifyCheckSum(packet, packetX)
 
@@ -23,7 +24,7 @@ def getPacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayl
 
 	h = encodeHeader(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp)
 	checkSum = calculateCheckSum(h, payload)
-	p = h+str(checkSum)+payload
+	p = h+convert32BitToString(checkSum)+payload
 	return p
 
 def encodeHeader(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp):

@@ -25,6 +25,7 @@ class Packet:
 		self.timeStamp = 0
 		self.checksum = 0
 		self.payload = "."
+		self.packlist = []
 		
 	def setPacketValues(self, sip, sp, dip, dp, sn, an, sop, S, A, FI, L, FIR, rw, ts, pl):
 		self.sourceIP = sip
@@ -64,6 +65,9 @@ class Packet:
 		self.recvWindow = packList[12]
 		self.timeStamp = packList[13]
 		self.payload = packList[14]
+		self.packlist = packList
+
+		self.checksum = packet[28:32]
 
 	def getPacketAttribute(self, packList, attribute):
 
@@ -106,6 +110,12 @@ class Packet:
 
 	def isExpectedSeqNum(self, expectedSeqNum):
 		return (self.seqNum == expectedSeqNum)
+
+	def isCorrupt(self):
+		
+		enc = encodeHeader(self.sourceIP, self.sourcePort, self.destIP, self.destPort, self.seqNum, self.ackNum, self.sizeOfPayload, self.SYN, self.ACK, self.FIN, self.LAST, self.FIRST, self.recvWindow, self.timeStamp)
+		return (header.calculateChecksum(enc, self.payload) == self.checksum)
+
 
 if __name__=="__main__":
     main()

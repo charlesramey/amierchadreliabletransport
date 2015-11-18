@@ -1,22 +1,24 @@
-import threading, socket, header, time, Queue, random, dataqueue, packet
+import threading, socket, header, time, Queue, random, packet, dataqueue
 
 globalWindow = 5
-randomPacketDropping = False
+randomPacketDropping = True
 
-dataQueue = DataQueue()
 bufferSize = 5
 
 def main():
 	host = "127.0.0.1"
 	port = 5005
 
+
 	recvSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	recvSock.bind((host, port))
 	print "Starting receiver"
-	r = threading.Thread(target = relReceiver, args= (host, port, recvSock, 1, 1, 10) )
+	dq = dataqueue.DataQueue()
+
+	r = threading.Thread(target = relReceiver, args= (host, port, recvSock, 1, 1, 10, dq) )
 	r.start()
 
-def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
+def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize, dataQueue):
 	global globalWindow
 
 	setFirst = False
@@ -24,35 +26,25 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 	ackPacket = None
 
 	while True:
-		packet = Packet()
-		packet.createPacketFromString(recvSocket.recvfrom(1024)[0])
+		pack = packet.Packet()
+		pack.createPacketFromString(recvSocket.recvfrom(1024)[0])
 
-<<<<<<< HEAD
-		packetIsFirst = packet.isFirst()
-		packetIsLast = packet.isLast()
-=======
-		packetIsFirst = isFirst(packList)
-		packetIsLast = isLast(packList)
+		packetIsFirst = pack.isFirst()
+		packetIsLast = pack.isLast()
+
 		print packetIsFirst
->>>>>>> 7c6e6849ffdfeb36ee74020e216ef3376e82e7ab
 
 		if not isCorrupt(packet) and setFirst == False and packetIsFirst:
 			setFirst = True
-			expectedSeqNum = getPacketAttribute(packList, "seqNum")
+			expectedSeqNum = pack.seqNum
 
-		if setFirst and not isCorrupt(packet) and packet.isExpectedSeqNum(expectedSeqNum):
+		if setFirst and not isCorrupt(packet) and pack.isExpectedSeqNum(expectedSeqNum):
 
-<<<<<<< HEAD
 			print "hi"
-			data = packet.payload
-			receivedSeqNum = packet.seqNum
-			addr = (packet.sourceIP, packet.sourcePort)
+			data = pack.payload
+			receivedSeqNum = pack.seqNum
+			addr = (pack.sourceIP, pack.sourcePort)
 
-=======
-			data = getPacketAttribute(packList, "payload")
-			receivedSeqNum = getPacketAttribute(packList, "seqNum")
-			addr = (getPacketAttribute(packList, "sourceIP"), getPacketAttribute(packList, "sourcePort")) 
->>>>>>> 7c6e6849ffdfeb36ee74020e216ef3376e82e7ab
 			deliverData(data)
 
 			expectedSeqNum += 1
@@ -76,14 +68,15 @@ def unrelSender():
 def messageSplit(message, size):
 
 	out = []
-	for i in range(0, len(message)):
+	i = 0
+	while (i < len(message)):
 		out.append(message[i:i + size])
 		i += size
 
 	return out
 
 def isCorrupt(packet):
-	if (randomPacketDropping and random.random() > 0.8):
+	if (randomPacketDropping and random.random() > 0.9):
 		return True
 	return False
 
@@ -101,48 +94,13 @@ def getReceiveWindow():
 
 def deliverData(data):
 	print "RECEIVED:"+data
-
-	if (len(dataQueue) >)
+	#if (len(dataQueue) >)
 
 def makePacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload):
 	return header.getPacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload)
 
 def getPacket(packet):
 	return header.decodePacket(packet)
-
-def getPacketAttribute(packList, attribute):
-
-	if (attribute == "sourceIP"):
-		print packList[0]
-		return packList[0]
-	if (attribute == "sourcePort"):
-		return int(packList[1])
-	if (attribute == "destIP"):
-		return packList[2]
-	if (attribute == "destPort"):
-		return int(packList[3])
-	if (attribute == "seqNum"):
-		return int(packList[4])
-	if (attribute == "ackNum"):
-		return int(packList[5])
-	if (attribute == "sizeOfPayload"):
-		return int(packList[6])
-	if (attribute == "SYN"):
-		return int(packList[7])
-	if (attribute == "ACK"):
-		return int(packList[8])
-	if (attribute == "FIN"):
-		return int(packList[9])
-	if (attribute == "LAST"):
-		return int(packList[10])
-	if (attribute == "FIRST"):
-		return int(packList[11])
-	if (attribute == "recvWindow"):
-		return int(packList[12])
-	if (attribute == "timeStamp"):
-		return long(packList[13])
-	if (attribute == "payload"):
-		return packList[14]
 
 
 
