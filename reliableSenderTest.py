@@ -14,7 +14,9 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
         selfIP = '127.0.0.1'
         selfPort = 6050
         timer = False
+        ackNum = -1
         sent = 0
+        lastPrinted = -1
         baseSeqNum = nextSeqNumber
         baseBase = base
         recvSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -24,8 +26,8 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
         t.start()
         firstsent = 1
         unAckedPackets = []
-        while sent < len(dataList):
-                if nextSeqNumber < (base + 5):
+        while ackNum < len(dataList):
+                if nextSeqNumber < (base + 5) and sent < len(dataList):
                         packetNumber = nextSeqNumber-baseSeqNum
                         print "Sending: %s" %(dataList[packetNumber])
                         sendPacket = makePacket(
@@ -45,17 +47,14 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                
                 else:
                         currentTime = time.time()
-                        print int(currentTime-timerStart)
+                        seconds = int(currentTime-timerStart)
+                        if seconds != lastPrinted:
+                            print seconds
+                            lastPrinted = seconds
                         if timer and int(currentTime-timerStart) > 5:
                                 print "Timer timed out"
-                                #resend
-                                #Data takes the place of all packets from base to nextSeqNum-1
-                                #packetNum = base + 1
-                                #print "packetNum: %d" %(packetNum)
-                                #print "(nextSeqNumber): %d" %(nextSeqNumber)
-                                #while base + packetNum < (nextSeqNumber):
-                                #       print "RE-Sending: %s" %(data[packetNum-baseSeqNum])
                                 for packetNum in unAckedPackets:
+                                        print "RE_Sending seqNum = %d" %(packetNum)
                                         print "RE-Sending: %s" %(dataList[packetNum])
                                         sendPacket = makePacket(
                                                         selfIP, selfPort, '127.0.0.1', 5005, packetNum,
@@ -76,14 +75,17 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                                         pack.createPacketFromString(ackPacket)
 
                                         if not isCorrupt(ackPacket):
-                                                print
+                                                print "got ack! %d" %(pack.ackNum)
                                                 ackNum =  pack.ackNum
                                                 base = ackNum + 1
                                                 if ackNum in unAckedPackets:
+                                                    if unAckedPackets.index(ackNum) == (len(unAckedPackets) - 1):
                                                         unAckedPackets.remove(ackNum)
+                                                    else:
+                                                        unAckedPackets = unAckedPackets[unAckedPackets.index(ackNum):]
                                                 print "base = %d" %(base)
                                                 print "nextSeqNumber: %d" %(nextSeqNumber)
-                                        if base == nextSeqNumber:
+                                        if base == nextSeqNumber and ackNum >= len(dataList):
                                                 print "ACK base == nextSeqNumber, timer stoping"
                                                 timer = False
                                         else:

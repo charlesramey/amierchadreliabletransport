@@ -24,6 +24,7 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize, 
 	setFirst = False
 	expectedSeqNum = 0
 	ackPacket = None
+	addr = None
 
 	while True:
 		pack = packet.Packet()
@@ -32,7 +33,7 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize, 
 		packetIsFirst = pack.isFirst()
 		packetIsLast = pack.isLast()
 
-		print packetIsFirst
+		#print packetIsFirst
 
 		if not isCorrupt(packet) and setFirst == False and packetIsFirst:
 			setFirst = True
@@ -40,7 +41,6 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize, 
 
 		if setFirst and not isCorrupt(packet) and pack.isExpectedSeqNum(expectedSeqNum):
 
-			print "hi"
 			data = pack.payload
 			receivedSeqNum = pack.seqNum
 			addr = (pack.sourceIP, pack.sourcePort)
@@ -50,16 +50,19 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize, 
 			expectedSeqNum += 1
 			ackPacket = makePacket(selfIP, selfPort, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, 0, getReceiveWindow(), 100000, "xxx")
 			recvSocket.sendto(ackPacket, addr)
-			print "We got SEQ:"+str(expectedSeqNum)
-			
+			print "We got SEQ:"+ str(pack.seqNum)
+		
+		if not pack.isExpectedSeqNum(expectedSeqNum):
+			print "Expected SeqNum: %d" %(expectedSeqNum)
+			print "Got SeqNum: %d" %(pack.seqNum)
 		else:
-			if (setFirst):
+			if (setFirst) and addr:
 				recvSocket.sendto(ackPacket, addr)
 
 def unrelReceiver(sock):
 	global ackQueue
 	data = sock.recv(1024)
-	ackQueue.put(ackQueue)
+	ackQueue.put(data)
 	return 
 
 def unrelSender():
@@ -76,7 +79,7 @@ def messageSplit(message, size):
 	return out
 
 def isCorrupt(packet):
-	if (randomPacketDropping and random.random() > 0.9):
+	if (randomPacketDropping and random.random() > 0.8):
 		return True
 	return False
 
