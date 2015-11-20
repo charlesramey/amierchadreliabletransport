@@ -43,6 +43,23 @@ def bufferWorker(string, dq):
 
 
 
+
+class MessageQueue:
+
+	def __init__(self):
+		self.queue = deque()
+
+
+	def enqueue(self, string):
+		self.queue.append(string)
+
+	def dequeue(self):
+		return self.queue.popleft()
+
+	def getSize(self):
+		return len(self.queue)
+
+
 class DataQueue:
 
 	def __init__(self):
