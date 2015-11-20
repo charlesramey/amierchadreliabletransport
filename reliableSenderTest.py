@@ -29,6 +29,11 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
         if nextSeqNumber < (base + 5) and sent < len(dataList):
             packetNumber = nextSeqNumber-baseSeqNum
             print "Sending: %s" %(dataList[packetNumber])
+            if sent + 1 == len(dataList):
+                sendPacket = makePacket(
+                    selfIP, selfPort, '127.0.0.1', 5005, packetNumber, packetNumber,
+                    5, 0, 0, 0, 1, firstsent, getReceiveWindow(), 100000, dataList[packetNumber]
+                    )
             sendPacket = makePacket(
                     selfIP, selfPort, '127.0.0.1', 5005, packetNumber, packetNumber,
                     5, 0, 0, 0, 0, firstsent, getReceiveWindow(), 100000, dataList[packetNumber]
