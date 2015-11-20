@@ -32,9 +32,10 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
             packetNumber = nextSeqNumber-baseSeqNum
             print "Sending: %s" %(dataList[packetNumber])
             if sent + 1 == len(dataList):
+                last_packet = 1
                 sendPacket = makePacket(
                     selfIP, selfPort, '127.0.0.1', 5005, packetNumber, packetNumber,
-                    5, 0, 0, 0, 1, firstsent, getReceiveWindow(), 100000, dataList[packetNumber]
+                    5, 0, 0, 0, last_packet, firstsent, getReceiveWindow(), 100000, dataList[packetNumber]
                     )
             sendPacket = makePacket(
                     selfIP, selfPort, '127.0.0.1', 5005, packetNumber, packetNumber,
@@ -81,7 +82,7 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                     if not isCorrupt(ackPacket):
                         print "got ack! %d" %(pack.ackNum)
                         ackNum =  pack.ackNum
-                        flowWindow = 5#max(pack.recvWindow/packetSize, 1)
+                        flowWindow = 5 #max(pack.recvWindow/packetSize, 1)
                         print "FLOW WINDOW:"+str(flowWindow)
                         base = ackNum + 1
                         if ackNum in unAckedPackets:
