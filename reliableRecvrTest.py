@@ -88,9 +88,14 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 			ackPacket = makePacket(selfIP, selfPort, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, 0, getReceiveWindow(), 100000, "xxx")
 
 			recvSocket.sendto(ackPacket, addr)
+<<<<<<< HEAD
 			#print "We got SEQ:"+ str(pack.seqNum)
 		if not pack.isExpectedSeqNum(expectedSeqNum):
 			continue
+=======
+			print "We got SEQ:"+ str(pack.seqNum)
+		#if not pack.isExpectedSeqNum(expectedSeqNum):
+>>>>>>> 5dda46f6e2675acd36889b0438b512e42b8d7c03
 			#print "Expected SeqNum: %d" %(expectedSeqNum)
 			#print "Got SeqNum: %d" %(pack.seqNum)
 		else:
