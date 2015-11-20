@@ -19,7 +19,7 @@ def main():
 	dq = dataqueue.DataQueue()
 	mq = dataqueue.MessageQueue()
 
-	r = threading.Thread(target = bufferWorker, args= (host, port, recvSock, 1, 1, 10))
+	r = threading.Thread(target = relReceiver, args= (host, port, recvSock, 1, 1, 10))
 	r.start()
 
 	print relRecv()
@@ -47,6 +47,7 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 	ackPacket = None
 	addr = None
 
+	currentMessage = ""
 
 	while True:
 		pack = packet.Packet()
@@ -70,12 +71,15 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 
 			if (packetIsLast):
 				
-				if (not deliverData(data)):
-					continue
-
-				sendUp = True
+				currentMessage += str(pushAllData())
+				currentMessage += data
+				mq.enqueue(currentMessage)
+				currentMessage = ""
 				setFirst = False
+
 			else:
+
+				currentMessage += str(pushDataRandomly())
 				if (not deliverData(data)):
 					continue
 
@@ -98,30 +102,9 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 
 sendUp = False
 
-def bufferWorker(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
+dqLock = threading.Lock()
+mqLock = threading.Lock()
 
-	r = threading.Thread(target = relReceiver, args= (selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize))
-	r.start()
-
-	global sendUp, dq, mq
-
-	currentMessage = ""
-	while (True):
-		x = dq.dequeue()
-		if (x is not None):
-			currentMessage += str(x)
-
-		if (sendUp):
-			x = dq.dequeue()
-			if (x is not None):
-				currentMessage += str(x)
-
-			mq.enqueue(currentMessage)
-			currentMessage = ""
-			sendUp = False
-
-		if (flowControlCongestion and random.random() > 0.95):
-			time.sleep(1)
 
 
 
@@ -155,11 +138,33 @@ def getReceiveWindow():
 	return dq.getFreeSpace()
 
 def deliverData(data):
-	global dq
+	global dq, dqLock
 	#print "RECEIVED:"+data
-	return dq.enqueue(data)
-	
-	#if (len(dataQueue) >)
+	out = dq.enqueue(data)
+	return out
+
+
+def pushAllData():
+	global dq
+	out = ""
+	while (len(dq.queue) > 0):
+		x = dq.dequeue()
+
+		if (x is not None):
+			out += str(x)
+
+	return out
+
+def pushDataRandomly():
+	global dq
+	numPush = int(random.random() * 3)
+	out = ""
+	for i in range (0, numPush):
+		x = dq.dequeue()
+
+		if (x is not None):
+			out += str(x)
+	return out
 
 def makePacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload):
 	return header.getPacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload)
@@ -205,6 +210,41 @@ def relReceiverOld(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSiz
 		else:
 			if (setFirst) and addr:
 				recvSocket.sendto(ackPacket, addr)
+
+
+def bufferWorker(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
+
+	r = threading.Thread(target = relReceiver, args= (selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize))
+	r.start()
+
+	global sendUp, dq, mq, dqLock
+
+	currentMessage = ""
+	while (True):
+
+		#dqLock.acquire()
+		#try:
+		x = dq.dequeue()
+
+		if (x is not None):
+			currentMessage += str(x)
+
+		if (sendUp):
+
+			x = dq.dequeue()
+
+			if (x is not None):
+				currentMessage += str(x)
+
+			mq.enqueue(currentMessage)
+			currentMessage = ""
+			sendUp = False
+		#finally:
+		#	dqLock.release()
+
+		if (flowControlCongestion and random.random() > 0.95):
+			time.sleep(1)
+
 
 
 if __name__=="__main__":

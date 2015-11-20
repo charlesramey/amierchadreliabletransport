@@ -83,7 +83,8 @@ class DataQueue:
 
 	def dequeue(self):
 
-		if (self.currentSize == 0):
+		if (len(self.queue) == 0 or self.currentSize == 0):
+			self.currentSize = 0
 			return None
 
 		out = self.queue.popleft()
