@@ -1,8 +1,8 @@
 import threading, socket, header, time, Queue, random, packet, dataqueue
 
 globalWindow = 5
-randomPacketDropping = True
-flowControlCongestion = True
+randomPacketDropping = False
+flowControlCongestion = False
 bufferSize = 5
 mq = None
 dq = None
@@ -23,13 +23,13 @@ def main():
 	r.start()
 
 	print relRecv()
-	print relRecv()
-	print relRecv()
+	#print relRecv()
+	#print relRecv()
 
-	print relRecv()
-	print relRecv()
-	print relRecv()
-	print relRecv()
+	#print relRecv()
+	#print relRecv()
+	#print relRecv()
+	#print relRecv()
 
 def relRecv():
 	global mq
@@ -47,19 +47,14 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 	ackPacket = None
 	addr = None
 
-	i = 0
-	while True:
 
-		i += 1
+	while True:
 		pack = packet.Packet()
 		pack.createPacketFromString(recvSocket.recvfrom(1024)[0])
 
 		packetIsFirst = pack.isFirst()
 		packetIsLast = pack.isLast()
 
-		if ((i % 5) == 0):
-			packetIsLast = True
-			i = 0
 
 		if isCorrupt(packet):
 			continue
@@ -88,14 +83,12 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 			ackPacket = makePacket(selfIP, selfPort, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, 0, getReceiveWindow(), 100000, "xxx")
 
 			recvSocket.sendto(ackPacket, addr)
-<<<<<<< HEAD
 			#print "We got SEQ:"+ str(pack.seqNum)
 		if not pack.isExpectedSeqNum(expectedSeqNum):
 			continue
-=======
 			print "We got SEQ:"+ str(pack.seqNum)
 		#if not pack.isExpectedSeqNum(expectedSeqNum):
->>>>>>> 5dda46f6e2675acd36889b0438b512e42b8d7c03
+
 			#print "Expected SeqNum: %d" %(expectedSeqNum)
 			#print "Got SeqNum: %d" %(pack.seqNum)
 		else:
@@ -150,7 +143,7 @@ def messageSplit(message, size):
 	return out
 
 def isCorrupt(packet):
-	if (randomPacketDropping and random.random() > 0.95):
+	if (randomPacketDropping and random.random() > 0.97):
 		return True
 	return False
 
