@@ -73,6 +73,7 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
     ackNum = -1
     sent = 0
     lastPrinted = -1
+    last_packet = 0
     baseSeqNum = nextSeqNumber
     baseBase = base
     recvSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -86,15 +87,12 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
             packetNumber = nextSeqNumber-baseSeqNum
             print "Sending: %s" %(dataList[packetNumber])
             if sent + 1 == len(dataList):
+                print "LAST PACKET"+str(dataList[packetNumber])
                 last_packet = 1
-                sendPacket = makePacket(
-                    selfIP, selfPort, '127.0.0.1', 5007, packetNumber, packetNumber,
-                    5, 0, 0, 0, last_packet, firstsent, getReceiveWindow(), 100000, dataList[packetNumber]
-                    )
             sendPacket = makePacket(
-                    selfIP, selfPort, '127.0.0.1', 5007, packetNumber, packetNumber,
-                    5, 0, 0, 0, 0, firstsent, getReceiveWindow(), 100000, dataList[packetNumber]
-                    )
+                selfIP, selfPort, '127.0.0.1', 5007, packetNumber, packetNumber,
+                5, 0, 0, 0, last_packet, firstsent, getReceiveWindow(), 100000, dataList[packetNumber]
+                )
             sendSocket.sendto(sendPacket, ("127.0.0.1", 5007))
             unAckedPackets.append(packetNumber)
             firstsent = 0
@@ -116,11 +114,17 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                 for packetNum in unAckedPackets:
                     print "RE_Sending seqNum = %d" %(packetNum)
                     print "RE-Sending: %s" %(dataList[packetNum])
+
+                    if packetNum + 1 == len(dataList):
+                        print "LAST PACKET"+str(dataList[packetNumber])
+                        last_packet = 1
                     sendPacket = makePacket(
                         selfIP, selfPort, '127.0.0.1', 5005, packetNum,
-                        packetNum, 5, 0, 0, 0, 0, firstsent, getReceiveWindow(),
+                        packetNum, 5, 0, 0, 0, last_packet, firstsent, getReceiveWindow(),
                         100000, dataList[packetNum]
                         )
+                    last_packet = 0
+
                     sendSocket.sendto(sendPacket, ('127.0.0.1', 5005))
                     firstsent = 0
                 #after resend, restart unrelReceiver and timer
