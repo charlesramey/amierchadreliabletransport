@@ -134,7 +134,7 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 
 			if (packetIsLast):
 				
-				currentMessage += str(pushAllData())
+				currentMessage += str(pushData(0))
 				currentMessage += data
 				mq.enqueue(currentMessage)
 				currentMessage = ""
@@ -142,7 +142,7 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 
 			else:
 
-				currentMessage += str(pushDataRandomly())
+				currentMessage += str(pushData(0))
 				if (not deliverData(data)):
 					continue
 
@@ -210,6 +210,13 @@ def deliverData(data):
 	out = dq.enqueue(data)
 	return out
 
+
+def pushData(randomly):
+
+	if (randomly == 0):
+		return pushAllData()
+	else:
+		return pushDataRandomly()
 
 def pushAllData():
 	global dq
