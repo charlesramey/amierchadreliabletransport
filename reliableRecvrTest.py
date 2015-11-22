@@ -84,6 +84,10 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 					continue
 
 			expectedSeqNum += 1
+
+			if (isCorrupt(packet)):
+				continue
+				
 			ackPacket = makePacket(selfIP, selfPort, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, 0, getReceiveWindow(), 100000, "xxx")
 
 			recvSocket.sendto(ackPacket, addr)
