@@ -66,7 +66,6 @@ class Packet:
 		self.timeStamp = packList[13]
 		self.payload = packList[14]
 		self.packlist = packList
-
 		self.checksum = packet[28:32]
 
 	def getPacketAttribute(self, packList, attribute):
@@ -116,6 +115,20 @@ class Packet:
 		enc = encodeHeader(self.sourceIP, self.sourcePort, self.destIP, self.destPort, self.seqNum, self.ackNum, self.sizeOfPayload, self.SYN, self.ACK, self.FIN, self.LAST, self.FIRST, self.recvWindow, self.timeStamp)
 		return (header.calculateChecksum(enc, self.payload) == self.checksum)
 
+	def isSYN(self):
+		if int(self.packlist[7]) == 1 and int(self.packlist[8]) == 0:
+			return True
+		return False
+
+	def isACK(self):
+		if int(self.packlist[7]) == 0 and int(self.packlist[8]) == 1:
+			return True
+		return False
+
+	def isSYNACK(self):
+		if int(self.packlist[7]) == 1 and int(self.packlist[8]) == 1:
+			return True
+		return False
 
 if __name__=="__main__":
     main()

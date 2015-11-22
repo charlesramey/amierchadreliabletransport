@@ -75,6 +75,28 @@ def decodeHeader(string):
 	out = [sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp]
 	return out
 
+def getSourceAddress(packet):
+	header = decodeHeader(packet[0:28])
+	return (header[0], header[1])
+	
+def isSYNACK(packet):
+	header = decodeHeader(packet[0:28])
+	if header[7] == 1 and header[8] == 1:
+		return True
+	return False
+
+def isSYN(packet):
+	header = decodeHeader(packet[0:28])
+	if header[7] == 1 and header[8] == 0:
+		return True
+	return False
+
+def isACK(packet):
+	header = decodeHeader(packet[0:28])
+	if header[7] == 0 and header[8] == 1:
+		return True
+	return False
+
 def verifyCheckSum(packetA, packetB):
 
 	return (packetA[28:32] == packetB[28:32])

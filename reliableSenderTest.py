@@ -1,15 +1,69 @@
-import threading, socket, header, time, Queue, packet
+import threading, socket, header, time, Queue, packet, hashlib
  
 globalWindow = 5
 ackQueue = Queue.Queue()
- 
+server_ip = '127.0.0.1'
+server_port = 5007
+
 def main():
-    sendSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    unrel_rcv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     data = "TEST MESSAGE, THIS IS AN EXAMPLE OF DATA THAT CAN BE SENT AMONG OTHER THINGS THAT CAN BE SENT!!!!!"
     data2 = "A wonderful fact to reflect upon, that every human creature is constituted to be that profound secret and mystery to every other. A solemn consideration, when I enter a great city by night, that every one of those darkly clustered houses encloses its own secret; that every room in every one of them encloses its own secret; that every beating heart in the hundreds of thousands of breasts there, is, in some of its imaginings, a secret to the heart nearest it! Something of the awfulness, even of Death itself, is referable to this. No more can I turn the leaves of this dear book that I loved, and vainly hope in time to read it all. No more can I look into the depths of this unfathomable water, wherein, as momentary lights glanced into it, I have had glimpses of buried treasure and other things submerged. It was appointed that the book should shut with a spring, for ever and for ever, when I had read but a page. It was appointed that the water should be locked in an eternal frost, when the light was playing on its surface, and I stood in ignorance on the shore. My friend is dead, my neighbour is dead, my love, the darling of my soul, is dead; it is the inexorable consolidation and perpetuation of the secret that was always in that individuality, and which I shall carry in mine to my life's end. In any of the burial-places of this city through which I pass, is there a sleeper more inscrutable than its busy inhabitants are, in their innermost personality, to me, or than I am to them?"
-    s = threading.Thread(target = relSender, args= (sendSock, data2, 0, 0, 5, 5) )
+    rcvr = threading.Thread(target=unrelReceiver, args=(unrel_rcv, '127.0.0.1', 6005))
+    rcvr.start()
+    authenticated = False
+    while not authenticated:
+        authenticated = handshake(server_ip, server_port, send_sock)
+    s = threading.Thread(target = relSender, args= (send_sock, data2, 0, 0, 5, 5) )
     s.start()
- 
+
+def handshake(server_ip, server_port, send_socket):
+    syn_flag = 1
+    self_ip = '127.0.0.1'
+    self_port = 6005
+    send_packet = makePacket(
+        self_ip, self_port, server_ip, server_port, 0, 0, 0, syn_flag, 0,
+        0, 0, 0, 0, 100000, '')
+    syn_ack_rcvd = False
+    challenge_resp = ''
+    while not syn_ack_rcvd:
+        send_socket.sendto(send_packet, (server_ip, server_port))
+        send_time = time.time()
+        print "Sent SYN"
+        while int(send_time - time.time()) < 5:
+            if not ackQueue.empty():
+                print "recved something"
+                rcvd_packet = ackQueue.get()
+                pack = packet.Packet()
+                pack.createPacketFromString(rcvd_packet)
+                print pack.packlist
+                if pack.isSYNACK():
+                    print "Got challenge"
+                    challenge_resp = hashlib.md5(pack.payload).hexdigest()
+                    syn_ack_rcvd = True
+                    break
+    ack_flag = 1
+    send_packet = makePacket(
+        server_ip, self_port, server_ip, server_port, 0, 0, 0, 0, ack_flag,
+        0, 0, 0, 0, 100000, challenge_resp)
+    send_socket.sendto(send_packet, (server_ip, server_port))
+    send_time = time.time()
+    print "Sent challenge_resp"
+    while int(send_time - time.time()) < 10:
+        if not ackQueue.empty():
+            print "HERE"
+            rcvd_packet = ackQueue.get()
+            pack = packet.Packet()
+            pack.createPacketFromString(rcvd_packet)
+            print "ACK packet", 
+            print pack.packlist
+            if pack.isACK():
+                print "Got ACK"
+                return True
+    return False
+
+
 def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
     global globalWindow, ackQueue
     flowWindow = 5
@@ -35,14 +89,11 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
             if sent + 1 == len(dataList):
                 print "LAST PACKET"+str(dataList[packetNumber])
                 last_packet = 1
-
             sendPacket = makePacket(
-                    selfIP, selfPort, '127.0.0.1', 5005, packetNumber, packetNumber,
-                    5, 0, 0, 0, last_packet, firstsent, getReceiveWindow(), 100000, dataList[packetNumber]
-                    )
-
-            last_packet = 0
-            sendSocket.sendto(sendPacket, ("127.0.0.1", 5005))
+                selfIP, selfPort, '127.0.0.1', 5007, packetNumber, packetNumber,
+                5, 0, 0, 0, last_packet, firstsent, getReceiveWindow(), 100000, dataList[packetNumber]
+                )
+            sendSocket.sendto(sendPacket, ("127.0.0.1", 5007))
             unAckedPackets.append(packetNumber)
             firstsent = 0
             sent += 1
