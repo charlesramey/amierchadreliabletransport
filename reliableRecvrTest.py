@@ -1,7 +1,7 @@
 import threading, socket, header, time, Queue, random, packet, dataqueue, hashlib, string
 globalWindow = 5
-randomPacketDropping = True
-flowControlCongestion = True
+randomPacketDropping = False
+flowControlCongestion = False
 bufferSize = 5
 mq = None
 dq = None
@@ -140,11 +140,10 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 				currentMessage = ""
 				setFirst = False
 
-			else:
-
-				currentMessage += str(pushDataRandomly())
-				if (not deliverData(data)):
-					continue
+			# else:
+			# 	currentMessage += str(pushDataRandomly())
+			# 	if (not deliverData(data)):
+			# 		continue
 
 			expectedSeqNum += 1
 			ackPacket = makePacket(selfIP, selfPort, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, 0, getReceiveWindow(), 100000, "xxx")
