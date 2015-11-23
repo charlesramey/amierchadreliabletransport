@@ -13,10 +13,14 @@ def main():
     rcvr = threading.Thread(target=unrelReceiver, args=(unrel_rcv, '127.0.0.1', 6005))
     rcvr.start()
     authenticated = False
-    while not authenticated:
-        authenticated = handshake(server_ip, server_port, send_sock)
-    s = threading.Thread(target = relSender, args= (send_sock, data2, 0, 0, 5, 5) )
-    s.start()
+    #while not authenticated:
+    #    authenticated = handshake(server_ip, server_port, send_sock)
+    #time.sleep(1)
+    relSender(send_sock, data, 0, 0, 5, 5)
+    relSender(send_sock, data2, 0, 0, 5, 5)
+    #relSender(send_sock, data2, 0, 0, 5, 5)
+    #s = threading.Thread(target = relSender, args= (send_sock, data, 0, 0, 5, 5) )
+    #s.start()
 
 def handshake(server_ip, server_port, send_socket):
     syn_flag = 1
@@ -81,11 +85,16 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
     t = threading.Thread(target=unrelReceiver, args=(recvSocket, selfIP, selfPort))
     t.start()
     firstsent = 1
+
     unAckedPackets = []
+
     while ackNum < len(dataList):
+        #print "89"
         if nextSeqNumber < (base + flowWindow) and sent < len(dataList):
+            print "91"
             packetNumber = nextSeqNumber-baseSeqNum
             print "Sending: %s" %(dataList[packetNumber])
+            print "SEQ NUM: %s" %(packetNumber)
             if sent + 1 == len(dataList):
                 print "LAST PACKET"+str(dataList[packetNumber])
                 last_packet = 1
@@ -105,12 +114,14 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
             nextSeqNumber += 1
         else:
             currentTime = time.time()
+
             seconds = int(currentTime-timerStart)
             if seconds != lastPrinted:
                 print seconds
                 lastPrinted = seconds
             if timer and int(currentTime-timerStart) > 5:
                 print "Timer timed out"
+                time.sleep(1)
                 for packetNum in unAckedPackets:
                     print "RE_Sending seqNum = %d" %(packetNum)
                     print "RE-Sending: %s" %(dataList[packetNum])
@@ -119,13 +130,13 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                         print "LAST PACKET"+str(dataList[packetNumber])
                         last_packet = 1
                     sendPacket = makePacket(
-                        selfIP, selfPort, '127.0.0.1', 5005, packetNum,
+                        selfIP, selfPort, '127.0.0.1', 5007, packetNum,
                         packetNum, 5, 0, 0, 0, last_packet, firstsent, getReceiveWindow(),
                         100000, dataList[packetNum]
                         )
                     last_packet = 0
 
-                    sendSocket.sendto(sendPacket, ('127.0.0.1', 5005))
+                    sendSocket.sendto(sendPacket, ('127.0.0.1', 5007))
                     firstsent = 0
                 #after resend, restart unrelReceiver and timer
                 print "TIMER RESTARTED AFTER RESEND"
@@ -150,13 +161,15 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                                 unAckedPackets = unAckedPackets[unAckedPackets.index(ackNum):]
                         print "base = %d" %(base)
                         print "nextSeqNumber: %d" %(nextSeqNumber)
-                    if base == nextSeqNumber and ackNum >= len(dataList):
+                    if base >= nextSeqNumber and ackNum >= len(dataList):
                         print "ACK base == nextSeqNumber, timer stoping"
                         timer = False
                     else:
                         print "restarting timer"
                         timer = True
                         timerStart = time.time()
+                        print ackNum
+                        print len(dataList)
 
 def unrelReceiver(sock, IP, PORT):
     global ackQueue

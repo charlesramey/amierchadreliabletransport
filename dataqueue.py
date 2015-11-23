@@ -72,24 +72,17 @@ class DataQueue:
 
 	def enqueue(self, string):
 
-		strLength = len(string)
-
-		if (strLength > self.getFreeSpace()):
-			return False
-
 		self.queue.append(string)
-		self.currentSize += strLength
 		return True
 
 	def dequeue(self):
 
-		if (len(self.queue) == 0 or self.currentSize == 0):
-			self.currentSize = 0
+		if (len(self.queue) == 0):
 			return None
 
 		out = self.queue.popleft()
 		strLength = len(out)
-		self.currentSize -= strLength
+		#self.currentSize -= strLength
 		return out
 
 
