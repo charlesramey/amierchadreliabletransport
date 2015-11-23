@@ -68,30 +68,33 @@ def close(server_ip, server_port, seq_num, send_socket):
     global self_ip, self_port
     fin_flag = 1
     send_packet = makePacket(
-        self_ip, self_port, server_ip, server_port, 0, 0, 0, 0, 0,
+        self_ip, self_port, server_ip, server_port, seq_num, seq_num, 0, 0, 0,
         fin_flag, 0, 0, 0, 100000, '')
     ack_rcvd = False
-    while not ack_rcvd:
+    tries = 0
+    while not ack_rcvd and tries < 10:
         send_socket.sendto(send_packet, (server_ip, server_port))
         send_time = time.time()
         print "Sent FIN"
-        while int(send_time - time.time()) < 5:
+        tries += 1
+        while int(send_time - time.time()) < 2:
             if not ackQueue.empty():
                 print "recved something"
                 rcvd_packet = ackQueue.get()
                 pack = packet.Packet()
                 pack.createPacketFromString(rcvd_packet)
                 print pack.packlist
-                if pack.isACK():
-                    print "Got challenge"
-                    challenge_resp = hashlib.md5(pack.payload).hexdigest()
+                if pack.isACK() and pack.isFIN():
+                    print "Got ACK"
                     ack_rcvd = True
+                    seq_num += 1
                     break
-    ack_flag = 1
-    send_packet = makePacket(
-        self_ip, self_port, server_ip, server_port, 0, 0, 0, 0, ack_flag,
-        0, 0, 0, 0, 100000, '')
-    send.sendto(send_packet, (server_ip, server_port))
+    if ack_rcvd:
+        ack_flag = 1
+        send_packet = makePacket(
+            self_ip, self_port, server_ip, server_port, seq_num, seq_num, 0, 0, ack_flag,
+            0, 0, 0, 0, 100000, '')
+        send_socket.sendto(send_packet, (server_ip, server_port))
 
 def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
     global globalWindow, ackQueue, server_ip, server_port
@@ -110,13 +113,9 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
     t = threading.Thread(target=unrelReceiver, args=(recvSocket, selfIP, selfPort))
     t.start()
     firstsent = 1
-
     unAckedPackets = []
-
     while ackNum < len(dataList):
-        #print "89"
         if nextSeqNumber < (base + flowWindow) and sent < len(dataList):
-            print "91"
             packetNumber = nextSeqNumber-baseSeqNum
             print "Sending: %s" %(dataList[packetNumber])
             print "SEQ NUM: %s" %(packetNumber)
@@ -139,7 +138,6 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
             nextSeqNumber += 1
         else:
             currentTime = time.time()
-
             seconds = int(currentTime-timerStart)
             if seconds != lastPrinted:
                 print seconds
@@ -188,7 +186,6 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                         print "ACK base == nextSeqNumber, timer stoping"
                         ackQueue.queue.clear()
                         send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                        nextSeqNumber += 1
                         close(server_ip, server_port, nextSeqNumber, send_sock)
                         timer = False
                     else:
