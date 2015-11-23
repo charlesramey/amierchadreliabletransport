@@ -7,7 +7,11 @@ self_ip = '127.0.0.1'
 self_port = 6005
 unrel_rcvr_stop = False
 
+start_time = 0
+calculatedTimeout = 0
+
 def main():
+    global start_time
     send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     unrel_rcv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     data = "TEST MESSAGE, THIS IS AN EXAMPLE OF DATA THAT CAN BE SENT AMONG OTHER THINGS THAT CAN BE SENT!!!!!"
@@ -23,6 +27,7 @@ def main():
     sys.exit()
     sys.exit()
 
+
 def handshake(server_ip, server_port, send_socket):
     global self_ip, self_port
     syn_flag = 1
@@ -34,7 +39,7 @@ def handshake(server_ip, server_port, send_socket):
     while not syn_ack_rcvd:
         send_socket.sendto(send_packet, (server_ip, server_port))
         send_time = time.time()
-        print "Sent SYN"
+        #print "Sent SYN"
         while int(send_time - time.time()) < 5:
             if not ackQueue.empty():
                 print "recved something"
@@ -111,6 +116,7 @@ def close(server_ip, server_port, seq_num, send_socket):
         return False
 
 def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
+    timeTracker = {}
     global globalWindow, ackQueue, server_ip, server_port
     flowWindow = 5
     selfIP = '127.0.0.1'
@@ -131,16 +137,19 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
     while ackNum < len(dataList):
         if nextSeqNumber < (base + flowWindow) and sent < len(dataList):
             packetNumber = nextSeqNumber-baseSeqNum
-            print "Sending: %s" %(dataList[packetNumber])
-            print "SEQ NUM: %s" %(packetNumber)
+            #print "Sending: %s" %(dataList[packetNumber])
+            #print "SEQ NUM: %s" %(packetNumber)
             if sent + 1 == len(dataList):
-                print "LAST PACKET"+str(dataList[packetNumber])
+                #print "LAST PACKET"+str(dataList[packetNumber])
                 last_packet = 1
             sendPacket = makePacket(
-                selfIP, selfPort, server_ip, server_port, packetNumber, packetNumber,
-                5, 0, 0, 0, last_packet, firstsent, getReceiveWindow(), 100000, dataList[packetNumber]
+                selfIP, selfPort, '127.0.0.1', 5007, packetNumber, packetNumber,
+                5, 0, 0, 0, last_packet, firstsent, getReceiveWindow(), getCurrentTime(), dataList[packetNumber]
                 )
-            sendSocket.sendto(sendPacket, (server_ip, server_port))
+            sendSocket.sendto(sendPacket, ("127.0.0.1", 5007))
+
+            timeTracker[packetNumber] = getCurrentTime()
+            #print "TIME TRACKER:"+str(timeTracker[packetNumber])
             unAckedPackets.append(packetNumber)
             firstsent = 0
             sent += 1
@@ -154,28 +163,29 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
             currentTime = time.time()
             seconds = int(currentTime-timerStart)
             if seconds != lastPrinted:
-                print seconds
+                #print seconds
                 lastPrinted = seconds
             if timer and int(currentTime-timerStart) > 5:
-                print "Timer timed out"
-                time.sleep(1)
+                #print "Timer timed out"
                 for packetNum in unAckedPackets:
-                    print "RE_Sending seqNum = %d" %(packetNum)
-                    print "RE-Sending: %s" %(dataList[packetNum])
+                    #print "RE_Sending seqNum = %d" %(packetNum)
+                    #print "RE-Sending: %s" %(dataList[packetNum])
 
                     if packetNum + 1 == len(dataList):
-                        print "LAST PACKET"+str(dataList[packetNumber])
+                        #print "LAST PACKET"+str(dataList[packetNumber])
                         last_packet = 1
                     sendPacket = makePacket(
                         selfIP, selfPort, server_ip, server_port, packetNum,
                         packetNum, 5, 0, 0, 0, last_packet, firstsent, getReceiveWindow(),
-                        100000, dataList[packetNum]
+                        getCurrentTime(), dataList[packetNum]
                         )
+                        
                     last_packet = 0
                     sendSocket.sendto(sendPacket, ('127.0.0.1', 5007))
+                    timeTracker[packetNumber] = getCurrentTime()
                     firstsent = 0
                 #after resend, restart unrelReceiver and timer
-                print "TIMER RESTARTED AFTER RESEND"
+                #print "TIMER RESTARTED AFTER RESEND"
                 timerStart = time.time()
                 timer = True
             else:
@@ -184,34 +194,36 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                     pack = packet.Packet()
                     pack.createPacketFromString(ackPacket)
                     if not isCorrupt(ackPacket):
-                        print "got ack! %d" %(pack.ackNum)
+                        #print "got ack! %d" %(pack.ackNum)
                         ackNum =  pack.ackNum
                         flowWindow = 5 #max(pack.recvWindow/packetSize, 1)
-                        print "FLOW WINDOW:"+str(flowWindow)
+                        #print "FLOW WINDOW:"+str(flowWindow)
+                        #print timeTracker[ackNum - 1]
+                        updateTimeout(timeTracker[ackNum - 1])
+
+
                         base = ackNum + 1
                         if ackNum in unAckedPackets:
                             if unAckedPackets.index(ackNum) == (len(unAckedPackets) - 1):
                                 unAckedPackets.remove(ackNum)
                             else:
                                 unAckedPackets = unAckedPackets[unAckedPackets.index(ackNum):]
-                        print "base = %d" %(base)
-                        print "nextSeqNumber: %d" %(nextSeqNumber)
+                        #print "base = %d" %(base)
+                        #print "nextSeqNumber: %d" %(nextSeqNumber)
                     if base >= nextSeqNumber and ackNum >= len(dataList):
-                        print "ACK base == nextSeqNumber, timer stoping"
+                        #print "ACK base == nextSeqNumber, timer stoping"
                         timer = False
                         ackQueue.queue.clear()
                         send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                         exit = close(server_ip, server_port, nextSeqNumber, send_sock)
                         if exit:
                             print "exiting"
-                            sys.exit(0)
-                            print "after exit?"
                     else:
                         print "restarting timer"
                         timer = True
                         timerStart = time.time()
-                        print ackNum
-                        print len(dataList)
+                        #print ackNum
+                        #print len(dataList)
 
 def unrelReceiver(sock, IP, PORT):
     global ackQueue, unrel_rcvr_stop
@@ -221,9 +233,6 @@ def unrelReceiver(sock, IP, PORT):
         ackQueue.put(data)
     print "unrelReceiver exiting"
  
-def unrelSender():
-    return
- 
 def messageSplit(message, size):
     out = []
     i = 0
@@ -231,18 +240,27 @@ def messageSplit(message, size):
             out.append(message[i:i + size])
             i += size
     return out
+
+def getCurrentTime():
+    global start_time
+    return int((time.time() - start_time) * 1000)
+
+def updateTimeout(inTime):
+    global calculatedTimeout
+    #print inTime 
+    rtt = getCurrentTime() - inTime
+    estimatedTimeout = (rtt * 100)/1000
+    
+    if (calculatedTimeout == 0):
+        calculatedTimeout = rtt
+    else:
+        calculatedTimeout = .75 * calculatedTimeout + .25 * estimatedTimeout
+
+    #print calculatedTimeout
+
  
 def isCorrupt(packet):
     return False
- 
-def isFirst(packList):
-    return getPacketAttribute(packList, "FIRST") == 1
- 
-def isLast(packList):
-    return getPacketAttribute(packList, "LAST") == 1
- 
-def isExpectedSeqNum(packetList, sequenceNumber):
-    return (getPacketAttribute(packetList, "seqNum") == sequenceNumber)
  
 def getReceiveWindow():
     return 10
@@ -255,40 +273,6 @@ def makePacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPay
  
 def getPacket(packet):
     return header.decodePacket(packet)
- 
-def getPacketAttribute(packList, attribute):
- 
-    if (attribute == "sourceIP"):
-        print packList[0]
-        return packList[0]
-    if (attribute == "sourcePort"):
-        return int(packList[1])
-    if (attribute == "destIP"):
-        return packList[2]
-    if (attribute == "destPort"):
-        return int(packList[3])
-    if (attribute == "seqNum"):
-        return int(packList[4])
-    if (attribute == "ackNum"):
-        return int(packList[5])
-    if (attribute == "sizeOfPayload"):
-        return int(packList[6])
-    if (attribute == "SYN"):
-        return int(packList[7])
-    if (attribute == "ACK"):
-        return int(packList[8])
-    if (attribute == "FIN"):
-        return int(packList[9])
-    if (attribute == "LAST"):
-        return int(packList[10])
-    if (attribute == "FIRST"):
-        return int(packList[11])
-    if (attribute == "recvWindow"):
-        return int(packList[12])
-    if (attribute == "timeStamp"):
-        return long(packList[13])
-    if (attribute == "payload"):
-        return packList[14]
  
  
  

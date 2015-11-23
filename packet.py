@@ -1,9 +1,20 @@
 import header
 
+<<<<<<< HEAD
+
+
+
+=======
+>>>>>>> d8ad017a80618c403147c5c9ab8080a81659994c
 def main():
 	p = Packet()
 	print p.sourceIP
 
+<<<<<<< HEAD
+
+
+=======
+>>>>>>> d8ad017a80618c403147c5c9ab8080a81659994c
 class Packet:
 
 	def __init__(self):
@@ -109,8 +120,14 @@ class Packet:
 		return (self.seqNum == expectedSeqNum)
 
 	def isCorrupt(self):
+<<<<<<< HEAD
+		
+		enc = header.encodeHeader(self.sourceIP, self.sourcePort, self.destIP, self.destPort, self.seqNum, self.ackNum, self.payloadSize, self.SYN, self.ACK, self.FIN, self.LAST, self.FIRST, self.recvWindow, self.timeStamp)
+		return (header.convert32BitToString(header.calculateCheckSum(enc, self.payload)) != self.checksum)
+=======
 		enc = encodeHeader(self.sourceIP, self.sourcePort, self.destIP, self.destPort, self.seqNum, self.ackNum, self.sizeOfPayload, self.SYN, self.ACK, self.FIN, self.LAST, self.FIRST, self.recvWindow, self.timeStamp)
 		return (header.calculateChecksum(enc, self.payload) == self.checksum)
+>>>>>>> d8ad017a80618c403147c5c9ab8080a81659994c
 
 	def isSYN(self):
 		if int(self.packlist[7]) == 1 and int(self.packlist[8]) == 0:

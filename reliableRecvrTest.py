@@ -5,12 +5,15 @@ mq = None
 dq = None
 host = "127.0.0.1"
 port = 5007
-randomPacketDropping = False#True
+randomPacketDropping = True
 flowControlCongestion = False
 synced = False
 
+start_time = 0
+calculatedTimeout = 5
+
 def main():
-	global mq, dq, host, port
+	global mq, dq, host, port, start_time
 
 
 	recvSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -20,7 +23,7 @@ def main():
 	dq = dataqueue.DataQueue()
 	mq = dataqueue.MessageQueue()
 
-
+	start_time = time.time()
 	r = threading.Thread(target=relReceiver, args=(host, port, recvSock, 0, 0, 10))
 	r.start()
 	sys.exit()
@@ -165,9 +168,9 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 		packetIsFirst = pack.isFirst()
 		packetIsLast = pack.isLast()
 
-
+		#print "TIMESTAMP: "+str(pack.timeStamp)
 		#print "129"
-		if isCorrupt(packet):
+		if pack.isCorrupt():
 			continue
 
 		if setFirst == False and packetIsFirst:
@@ -195,7 +198,13 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 			expectedSeqNum += 1
 			if (isCorrupt(packet)):#simulates packets dropped on the way back
 				continue
+<<<<<<< HEAD
+				
+			ackPacket = makePacket(selfIP, selfPort, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, 0, getReceiveWindow(), getCurrentTime(), "xxx")
+
+=======
 			ackPacket = makePacket(selfIP, selfPort, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, 0, getReceiveWindow(), 100000, "xxx")
+>>>>>>> d8ad017a80618c403147c5c9ab8080a81659994c
 			recvSocket.sendto(ackPacket, addr)
 			#print "We got SEQ:"+ str(pack.seqNum)
 		elif not pack.isExpectedSeqNum(expectedSeqNum):
@@ -280,84 +289,15 @@ def pushDataRandomly():
 			out += str(x)
 	return out
 
+def getCurrentTime():
+    global start_time
+    return int((time.time() - start_time) * 1000)
+
 def makePacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload):
 	return header.getPacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload)
 
 def getPacket(packet):
 	return header.decodePacket(packet)
-
-
-def relReceiverOld(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
-	global globalWindow
-	setFirst = False
-	expectedSeqNum = 0
-	ackPacket = None
-	addr = None
-
-	while True:
-		pack = packet.Packet()
-		pack.createPacketFromString(recvSocket.recvfrom(1024)[0])
-		packetIsFirst = pack.isFirst()
-		packetIsLast = pack.isLast()
-
-		if (isCorrupt(packet)):
-			continue
-
-		if setFirst == False and packetIsFirst:
-			setFirst = True
-			expectedSeqNum = pack.seqNum
-		if setFirst and pack.isExpectedSeqNum(expectedSeqNum):
-			data = pack.payload
-			receivedSeqNum = pack.seqNum
-			addr = (pack.sourceIP, pack.sourcePort)
-			deliverData(data)
-			expectedSeqNum += 1
-			ackPacket = makePacket(selfIP, selfPort, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, 0, getReceiveWindow(), 100000, "xxx")
-
-			recvSocket.sendto(ackPacket, addr)
-			#print "We got SEQ:"+ str(pack.seqNum)
-
-		if not pack.isExpectedSeqNum(expectedSeqNum):
-			continue
-			#print "Expected SeqNum: %d" %(expectedSeqNum)
-			#print "Got SeqNum: %d" %(pack.seqNum)
-		else:
-			if (setFirst) and addr:
-				recvSocket.sendto(ackPacket, addr)
-
-
-def bufferWorker(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
-
-	r = threading.Thread(target = relReceiver, args= (selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize))
-	r.start()
-
-	global sendUp, dq, mq, dqLock
-
-	currentMessage = ""
-	while (True):
-
-		#dqLock.acquire()
-		#try:
-		x = dq.dequeue()
-
-		if (x is not None):
-			currentMessage += str(x)
-
-		if (sendUp):
-
-			x = dq.dequeue()
-
-			if (x is not None):
-				currentMessage += str(x)
-
-			mq.enqueue(currentMessage)
-			currentMessage = ""
-			sendUp = False
-		#finally:
-		#	dqLock.release()
-
-		if (flowControlCongestion and random.random() > 0.95):
-			time.sleep(1)
 
 
 
