@@ -21,8 +21,12 @@ def main():
     authenticated = False
     while not authenticated:
         authenticated = handshake(server_ip, server_port, send_sock)
-    s = threading.Thread(target=relSender, args=(send_sock, data2, 0, 0, 5, 5) )
-    s.start()
+
+    #time.sleep(5)
+    relSender(send_sock, data2, 0, 0, 5, 5)
+    relSender(send_sock, data, 0, 0, 5, 5)    
+    #s = threading.Thread(target=relSender, args= )
+    #s.start()
     print "here"
     sys.exit()
     sys.exit()
@@ -170,6 +174,8 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                 for packetNum in unAckedPackets:
                     #print "RE_Sending seqNum = %d" %(packetNum)
                     #print "RE-Sending: %s" %(dataList[packetNum])
+                    if packetNum == 0:
+                        firstsent = 1
 
                     if packetNum + 1 == len(dataList):
                         #print "LAST PACKET"+str(dataList[packetNumber])
@@ -179,7 +185,8 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                         packetNum, 5, 0, 0, 0, last_packet, firstsent, getReceiveWindow(),
                         getCurrentTime(), dataList[packetNum]
                         )
-                        
+
+                    firstsent = 0
                     last_packet = 0
                     sendSocket.sendto(sendPacket, ('127.0.0.1', 5007))
                     timeTracker[packetNumber] = getCurrentTime()
@@ -212,6 +219,7 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                         #print "nextSeqNumber: %d" %(nextSeqNumber)
                     if base >= nextSeqNumber and ackNum >= len(dataList):
                         #print "ACK base == nextSeqNumber, timer stoping"
+                        continue
                         timer = False
                         ackQueue.queue.clear()
                         send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -243,6 +251,7 @@ def messageSplit(message, size):
 
 def getCurrentTime():
     global start_time
+    return 0
     return int((time.time() - start_time) * 1000)
 
 def updateTimeout(inTime):
