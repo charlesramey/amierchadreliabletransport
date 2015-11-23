@@ -4,7 +4,6 @@ dq = None
 host = "127.0.0.1"
 port = 5007
 randomPacketDropping = False
-synced = False
 
 
 calculatedTimeout = 5
@@ -38,7 +37,8 @@ def main():
 
 def startReceiveThread(rapi, recvSock):
 	out = rapi.listen(recvSock)
-	rapi.relReceiver(out[2], None)
+	out.printConnection()
+	rapi.relReceiver(out)
 
 class ReceiverAPI:
 
@@ -47,11 +47,9 @@ class ReceiverAPI:
 		self.mq = dataqueue.MessageQueue()
 		self.host = h
 		self.port = p
-		self.peer_host = None
-		self.peer_port = None
 		self.randomPacketDropping = False
-		self.synced = False
 		self.start_time = 0
+		self.conn = None
 
 
 	def listen(self, recvSocket):
@@ -68,22 +66,36 @@ class ReceiverAPI:
 			#print packet_data
 			#add check for authentication
 
-			if (synced is False):
-				if pack.isSYN():
-					print "HERE, RECEIVED SYN"
-					authenticated = self.handshake(selfIP, selfPort, source_ip, source_port, recvSocket)
-					if authenticated:
-						#do stuff to record that client is authenticated
 
-						recvSocket.close()
-						recvSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-						recvSocket.bind((host, port))
+			if pack.isSYN():
+				print "HERE, RECEIVED SYN"
+				authenticated = self.handshake(selfIP, selfPort, source_ip, source_port, recvSocket)
+				if authenticated:
+					#do stuff to record that client is authenticated
 
-						print "AUTHENTICATED"
-						self.peer_host = source_ip
-						self.peer_port = source_port
-						return [source_ip, source_port, recvSocket]
-					continue
+					recvSocket.close()
+					recvSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+					recvSocket.bind((host, port))
+
+					print "AUTHENTICATED"
+
+					##############################
+					conn = connection.Connection()
+					conn.peer_ip = source_ip
+					conn.peer_recvPort = source_port
+					conn.peer_sendPort = pack.sourcePort
+
+					conn.ip = self.host
+					conn.my_recvPort = self.port
+					conn.recvSocket = recvSocket
+
+					conn.status = True
+					##############################
+
+					return conn
+				else:
+					return None
+				continue
 
 	def handshake(self, self_ip, self_port, client_ip, client_port, rcvr):
 		challenge = self.random_string()
@@ -133,7 +145,7 @@ class ReceiverAPI:
 		return False
 
 
-	def filterPacket(self, pack, ip, port):
+	def filterPacket(self, pack, conn):
 		return False
 
 
@@ -240,13 +252,14 @@ class ReceiverAPI:
 		#upper case ascii, lower case ascii, and digits
 		return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))	
 
-	def relReceiver(self, recvSocket, conn):
+	def relReceiver(self, conn):
 
 		self.start_time = time.time()
 		dq = self.dq
 		mq = self.mq
 		selfIP = self.host
 		selfPort = self.port
+		recvSocket = conn.recvSocket
 
 
 
@@ -269,8 +282,9 @@ class ReceiverAPI:
 
 			if pack.isFIN():
 				print "CLOSING HANDSHAKE"
+				expectedSeqNum = 0
 				if pack.isExpectedSeqNum(expectedSeqNum):
-					exit = close(selfIP, selfPort, source_ip, source_port, recvSocket)
+					exit = self.close(selfIP, selfPort, source_ip, source_port, recvSocket)
 					if exit:
 						print "EXITING?"
 						sys.exit()
@@ -281,7 +295,7 @@ class ReceiverAPI:
 
 			#print "TIMESTAMP: "+str(pack.timeStamp)
 			#print "129"
-			if pack.isCorrupt() or self.filterPacket(pack,self.peer_host,self.peer_port) or self.packetDrop():
+			if pack.isCorrupt() or self.filterPacket(pack, conn) or self.packetDrop():
 				continue
 
 			if setFirst == False and packetIsFirst:

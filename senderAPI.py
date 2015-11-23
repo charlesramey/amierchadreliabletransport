@@ -1,4 +1,4 @@
-import threading, socket, header, time, Queue, packet, hashlib, sys 
+import threading, socket, header, time, Queue, packet, hashlib, sys, connection
 
 server_ip = '127.0.0.1'
 server_port = 5007
@@ -47,7 +47,8 @@ class SenderAPI:
 
     def __init__(self, h, p):
         self.ackQueue = Queue.Queue()
-        self.host = None
+        self.handshakeQueue = Queue.Queue()
+        self.host = "127.0.0.1"
         self.port = None
         self.peer_host = h
         self.peer_port = p
@@ -59,7 +60,6 @@ class SenderAPI:
     def killReceiver(self, recvSock):
         self.killOther = True
         recvSock.setblocking(0)
-
 
     def unrelReceiver(self, sock, IP, PORT):
         global unrel_rcvr_stop
@@ -160,15 +160,57 @@ class SenderAPI:
                     if pack.isACK():
                         ack_rcvd = True
                         print "Got ACK"
+
+                        ##############################
+                        conn = connection.Connection()
+                        conn.peer_ip = self.peer_host
+                        conn.peer_recvPort = self.peer_port
+                        conn.peer_sendPort = pack.sourcePort
+
+                        conn.ip = self_ip
+                        conn.my_sendPort = self_port
+                        conn.sendSocket = send_socket
+
+                        conn.status = True
+
+                        conn.printConnection()
+                        return conn
+                        ##############################
+
                         return True
                     else: 
                         attempts += 1
-        #send_socket.sendto("CLOSEDOWNNPLZKTHXBYE", (self_ip, self_port))
-        #self.killReceiver(handshakeSocket)
+
+        ##############################
+        conn = connection.Connection()
+        conn.peer_ip = self.peer_host
+        conn.peer_recvPort = self.peer_port
+        conn.peer_sendPort = pack.sourcePort
+
+        conn.ip = self_ip
+        conn.my_sendPort = self_port
+        conn.sendSocket = send_socket
+
+        conn.status = True
+
+        conn.printConnection()
+        return conn
+        ##############################
         return ack_rcvd
 
-    def close(self, server_ip, server_port, seq_num, send_socket):
-        global self_ip, self_port
+    def close(self, conn):
+
+        self_ip = conn.ip
+        self_port = conn.my_sendPort
+        server_ip = conn.peer_ip
+        server_port = conn.peer_recvPort
+        seq_num = 0
+        send_socket = conn.sendSocket
+        ackQueue = self.ackQueue
+
+        conn.printConnection()
+
+
         fin_flag = 1
         send_packet = self.makePacket(
             self_ip, self_port, server_ip, server_port, seq_num, seq_num, 0, 0, 0,
@@ -203,12 +245,12 @@ class SenderAPI:
         else: 
             return False
 
-    def relSender(self, sendSocket, data):
+    def relSender(self, conn, data):
         timeTracker = {}
         
-
-        server_ip = self.peer_host
-        server_port = self.peer_port
+        sendSocket = conn.sendSocket
+        server_ip = conn.peer_ip
+        server_port = conn.peer_recvPort
 
         ackQueue = self.ackQueue
         packetSize = 5
@@ -216,8 +258,8 @@ class SenderAPI:
 
         recvSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         #recvSocket.bind(0)
-        selfIP = '127.0.0.1'
-        selfPort = 6050
+        selfIP = conn.ip
+        selfPort = conn.my_sendPort
 
         timer = False
         ackNum = -1
