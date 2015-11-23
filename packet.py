@@ -1,10 +1,8 @@
 import header
 
-
 def main():
 	p = Packet()
 	print p.sourceIP
-
 
 class Packet:
 
@@ -111,7 +109,6 @@ class Packet:
 		return (self.seqNum == expectedSeqNum)
 
 	def isCorrupt(self):
-		
 		enc = encodeHeader(self.sourceIP, self.sourcePort, self.destIP, self.destPort, self.seqNum, self.ackNum, self.sizeOfPayload, self.SYN, self.ACK, self.FIN, self.LAST, self.FIRST, self.recvWindow, self.timeStamp)
 		return (header.calculateChecksum(enc, self.payload) == self.checksum)
 
@@ -129,6 +126,12 @@ class Packet:
 		if int(self.packlist[7]) == 1 and int(self.packlist[8]) == 1:
 			return True
 		return False
+
+	def isFIN(self):
+		if int(self.packlist[9]) == 1:
+			return True
+		return False
+
 
 if __name__=="__main__":
     main()

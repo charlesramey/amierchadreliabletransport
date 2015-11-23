@@ -5,6 +5,8 @@ mq = None
 dq = None
 host = "127.0.0.1"
 port = 5007
+flowControlCongestion = False
+randomPacketDropping = False
 
 def main():
 	global mq, dq, host, port
@@ -78,6 +80,8 @@ def handshake(self_ip, self_port, client_ip, client_port, rcvr):
 			continue
 	return challenge_rcvd
 
+def close():
+
 def random_string():
 	#creates a random string 10 characters long from a character set containing
 	#upper case ascii, lower case ascii, and digits
@@ -99,19 +103,19 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 		source_port = pack.sourcePort
 		#add check for authentication
 
-		if pack.isSYN():
-			print "HERE, RECEIVED SYN"
-			authenticated = handshake(selfIP, selfPort, source_ip, source_port, recvSocket)
-			if authenticated:
-				#do stuff to record that client is authenticated
-				authenticated_clients.append((source_ip, source_port))
-				recvSocket.close()
-				recvSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-				recvSocket.bind((host, port))
-				i = 0
-			print "AUTHENTICATED"
-			continue		
-		print "HERRO"
+		# if pack.isSYN():
+		# 	print "HERE, RECEIVED SYN"
+		# 	authenticated = handshake(selfIP, selfPort, source_ip, source_port, recvSocket)
+		# 	if authenticated:
+		# 		#do stuff to record that client is authenticated
+		# 		authenticated_clients.append((source_ip, source_port))
+		# 		recvSocket.close()
+		# 		recvSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		# 		recvSocket.bind((host, port))
+		# 		i = 0
+		# 	print "AUTHENTICATED"
+		# 	continue		
+
 		packetIsFirst = pack.isFirst()
 		packetIsLast = pack.isLast()
 
@@ -131,25 +135,16 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 			addr = (pack.sourceIP, pack.sourcePort)
 
 			if (packetIsLast):
-				
-				currentMessage += str(pushData(0))
-				currentMessage += data
-				mq.enqueue(currentMessage)
-				currentMessage = ""
+				#currentMessage += str(pushData(0))
+				#currentMessage += data
+				#mq.enqueue(currentMessage)
+				#currentMessage = ""
 				setFirst = False
 
-<<<<<<< HEAD
 			else:
-
-				currentMessage += str(pushData(0))
+				#currentMessage += str(pushData(0))
 				if (not deliverData(data)):
 					continue
-=======
-			# else:
-			# 	currentMessage += str(pushDataRandomly())
-			# 	if (not deliverData(data)):
-			# 		continue
->>>>>>> b4ba33fd8e657e134ac43d36539558f364e213d1
 
 			expectedSeqNum += 1
 
@@ -211,9 +206,9 @@ def getReceiveWindow():
 
 def deliverData(data):
 	global dq, dqLock
-	#print "RECEIVED:"+data
-	out = dq.enqueue(data)
-	return out
+	print "RECEIVED:"+data
+	#out = dq.enqueue(data)
+	#return out
 
 
 def pushData(randomly):
