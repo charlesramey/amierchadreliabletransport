@@ -82,6 +82,7 @@ def handshake(self_ip, self_port, client_ip, client_port, rcvr):
 	return challenge_rcvd
 
 def close():
+	continue
 
 def random_string():
 	#creates a random string 10 characters long from a character set containing
