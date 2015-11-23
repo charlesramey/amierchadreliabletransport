@@ -17,7 +17,7 @@ def main():
     authenticated = False
     while not authenticated:
         authenticated = handshake(server_ip, server_port, send_sock)
-    s = threading.Thread(target = relSender, args= (send_sock, data2, 0, 0, 5, 5) )
+    s = threading.Thread(target=relSender, args=(send_sock, data2, 0, 0, 5, 5) )
     s.start()
     print "here"
     sys.exit()
@@ -71,6 +71,7 @@ def handshake(server_ip, server_port, send_socket):
                     return True
                 else: 
                     attempts += 1
+    #send_socket.sendto("CLOSEDOWNNPLZKTHXBYE", (self_ip, self_port))
     return ack_rcvd
 
 def close(server_ip, server_port, seq_num, send_socket):
@@ -202,9 +203,9 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                         send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                         exit = close(server_ip, server_port, nextSeqNumber, send_sock)
                         if exit:
-                            unrel_rcvr_stop = True
                             print "exiting"
-                            sys.exit()
+                            sys.exit(0)
+                            print "after exit?"
                     else:
                         print "restarting timer"
                         timer = True
@@ -219,7 +220,6 @@ def unrelReceiver(sock, IP, PORT):
         data, addr = sock.recvfrom(1024)
         ackQueue.put(data)
     print "unrelReceiver exiting"
-    sys.exit()
  
 def unrelSender():
     return
