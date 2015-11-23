@@ -110,11 +110,16 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
     t = threading.Thread(target=unrelReceiver, args=(recvSocket, selfIP, selfPort))
     t.start()
     firstsent = 1
+
     unAckedPackets = []
+
     while ackNum < len(dataList):
+        #print "89"
         if nextSeqNumber < (base + flowWindow) and sent < len(dataList):
+            print "91"
             packetNumber = nextSeqNumber-baseSeqNum
             print "Sending: %s" %(dataList[packetNumber])
+            print "SEQ NUM: %s" %(packetNumber)
             if sent + 1 == len(dataList):
                 print "LAST PACKET"+str(dataList[packetNumber])
                 last_packet = 1
@@ -134,12 +139,14 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
             nextSeqNumber += 1
         else:
             currentTime = time.time()
+
             seconds = int(currentTime-timerStart)
             if seconds != lastPrinted:
                 print seconds
                 lastPrinted = seconds
             if timer and int(currentTime-timerStart) > 5:
                 print "Timer timed out"
+                time.sleep(1)
                 for packetNum in unAckedPackets:
                     print "RE_Sending seqNum = %d" %(packetNum)
                     print "RE-Sending: %s" %(dataList[packetNum])
@@ -148,13 +155,21 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                         print "LAST PACKET"+str(dataList[packetNumber])
                         last_packet = 1
                     sendPacket = makePacket(
+<<<<<<< HEAD
                         selfIP, selfPort, server_ip, server_port, packetNum,
+=======
+                        selfIP, selfPort, '127.0.0.1', 5007, packetNum,
+>>>>>>> 9403b7e0810fd7da6c8e2d0620a02cf4d95afe5c
                         packetNum, 5, 0, 0, 0, last_packet, firstsent, getReceiveWindow(),
                         100000, dataList[packetNum]
                         )
                     last_packet = 0
 
+<<<<<<< HEAD
                     sendSocket.sendto(sendPacket, (server_ip, server_port))
+=======
+                    sendSocket.sendto(sendPacket, ('127.0.0.1', 5007))
+>>>>>>> 9403b7e0810fd7da6c8e2d0620a02cf4d95afe5c
                     firstsent = 0
                 #after resend, restart unrelReceiver and timer
                 print "TIMER RESTARTED AFTER RESEND"
@@ -178,7 +193,11 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                                 unAckedPackets = unAckedPackets[unAckedPackets.index(ackNum):]
                         print "base = %d" %(base)
                         print "nextSeqNumber: %d" %(nextSeqNumber)
+<<<<<<< HEAD
                     if base >= nextSeqNumber and ackNum = len(dataList):
+=======
+                    if base >= nextSeqNumber and ackNum >= len(dataList):
+>>>>>>> 9403b7e0810fd7da6c8e2d0620a02cf4d95afe5c
                         print "ACK base == nextSeqNumber, timer stoping"
                         ackQueue.queue.clear()
                         send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -189,6 +208,8 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                         print "restarting timer"
                         timer = True
                         timerStart = time.time()
+                        print ackNum
+                        print len(dataList)
 
 def unrelReceiver(sock, IP, PORT):
     global ackQueue

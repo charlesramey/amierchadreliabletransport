@@ -5,8 +5,9 @@ mq = None
 dq = None
 host = "127.0.0.1"
 port = 5007
+randomPacketDropping = False#True
 flowControlCongestion = False
-randomPacketDropping = False
+synced = False
 
 def main():
 	global mq, dq, host, port
@@ -20,11 +21,11 @@ def main():
 	mq = dataqueue.MessageQueue()
 
 
-	r = threading.Thread(target=bufferWorker, args=(host, port, recvSock, 0, 0, 10))
+	r = threading.Thread(target=relReceiver, args=(host, port, recvSock, 0, 0, 10))
 	r.start()
 
 	print relRecv()
-	#print relRecv()
+	print relRecv()
 	#print relRecv()
 
 	#print relRecv()
@@ -88,67 +89,82 @@ def random_string():
 	return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))	
 
 def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
-	global globalWindow, sendUp, dq, mq, host, port
+	global globalWindow, sendUp, dq, mq, host, port, synced
 	setFirst = False
 	expectedSeqNum = 0
 	ackPacket = None
 	addr = None
+	currentMessage = ""
 	authenticated_clients = []
 	i = 0
 	while True:
+		#print "waiting"
 		pack = packet.Packet()
 		packet_data, address = recvSocket.recvfrom(1024)
 		pack.createPacketFromString(packet_data)
 		source_ip = pack.sourceIP
 		source_port = pack.sourcePort
+		#print packet_data
 		#add check for authentication
 
-		# if pack.isSYN():
-		# 	print "HERE, RECEIVED SYN"
-		# 	authenticated = handshake(selfIP, selfPort, source_ip, source_port, recvSocket)
-		# 	if authenticated:
-		# 		#do stuff to record that client is authenticated
-		# 		authenticated_clients.append((source_ip, source_port))
-		# 		recvSocket.close()
-		# 		recvSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		# 		recvSocket.bind((host, port))
-		# 		i = 0
-		# 	print "AUTHENTICATED"
-		# 	continue		
+		if (synced is False):
+
+			if pack.isSYN():
+				print "HERE, RECEIVED SYN"
+				authenticated = handshake(selfIP, selfPort, source_ip, source_port, recvSocket)
+				if authenticated:
+					#do stuff to record that client is authenticated
+					authenticated_clients.append((source_ip, source_port))
+					recvSocket.close()
+					recvSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+					recvSocket.bind((host, port))
+					i = 0
+				print "AUTHENTICATED"
+				synced = True
+
+				continue		
+		#print "HERRO"
 
 		packetIsFirst = pack.isFirst()
 		packetIsLast = pack.isLast()
 
 
+		#print "129"
 		if isCorrupt(packet):
-			print "CORRUPT"
 			continue
 
 		if setFirst == False and packetIsFirst:
 			setFirst = True
-			#expectedSeqNum = pack.seqNum
+			currentMessage = ""
+			expectedSeqNum = pack.seqNum
 
 		if pack.isExpectedSeqNum(expectedSeqNum):
 			data = pack.payload
-			print "DATA: %s" %(data)
+			#print "DATA: %s" %(data) 
+			#print "SEQ: "+str(pack.seqNum)
 			receivedSeqNum = pack.seqNum
 			addr = (pack.sourceIP, pack.sourcePort)
 
-			if (packetIsLast):
-				#currentMessage += str(pushData(0))
-				#currentMessage += data
-				#mq.enqueue(currentMessage)
-				#currentMessage = ""
+			if (setFirst and packetIsLast):
+				
+				currentMessage += str(pushData(0))
+				currentMessage += data
+				mq.enqueue(currentMessage)
+				currentMessage = ""
 				setFirst = False
-
 			else:
-				#currentMessage += str(pushData(0))
-				if (not deliverData(data)):
+				currentMessage += str(pushData(0))
+
+				if (not dataDeliverable()):
 					continue
 
-			expectedSeqNum += 1
+				deliverData(data)
 
-			if (isCorrupt(packet)):
+			#print "157"
+			expectedSeqNum += 1
+			#print "159"
+
+			if (isCorrupt(packet)):#simulates packets dropped on the way back
 				continue
 				
 			ackPacket = makePacket(selfIP, selfPort, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, 0, getReceiveWindow(), 100000, "xxx")
@@ -156,22 +172,21 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 			recvSocket.sendto(ackPacket, addr)
 
 			#print "We got SEQ:"+ str(pack.seqNum)
-		if not pack.isExpectedSeqNum(expectedSeqNum):
-			print "INCORRECT SEQ NUMBER"
-			print "Pack seq num: %s" %(str(pack.seqNum))
-			print "exptd seq num: %d" %(expectedSeqNum)
+		elif not pack.isExpectedSeqNum(expectedSeqNum):
+			#print "170"
+			#print "INCORRECT SEQ NUMBER"
+			#print "Pack seq num: %s" %(str(pack.seqNum))
+			#print "exptd seq num: %d" %(expectedSeqNum)
+			recvSocket.sendto(ackPacket, addr)
 			continue
 
 		else:
+			#print "177"
 			if (setFirst) and addr:
 				recvSocket.sendto(ackPacket, addr)
 
 
 sendUp = False
-
-dqLock = threading.Lock()
-mqLock = threading.Lock()
-
 
 
 
@@ -204,12 +219,15 @@ def getReceiveWindow():
 	global dq
 	return dq.getFreeSpace()
 
+
+def dataDeliverable():
+	global dq
+	return (len(dq.queue) < 5)
+
 def deliverData(data):
 	global dq, dqLock
-	print "RECEIVED:"+data
-	#out = dq.enqueue(data)
-	#return out
-
+	out = dq.enqueue(data)
+	return True
 
 def pushData(randomly):
 
@@ -221,7 +239,9 @@ def pushData(randomly):
 def pushAllData():
 	global dq
 	out = ""
-	while (len(dq.queue) > 0):
+	sizeOfQueue = len(dq.queue)
+
+	for i in range(0, sizeOfQueue):
 		x = dq.dequeue()
 
 		if (x is not None):
