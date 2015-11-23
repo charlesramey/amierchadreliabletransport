@@ -1,11 +1,11 @@
-import threading, socket, header, time, Queue, packet, hashlib
- 
+import threading, socket, header, time, Queue, packet, hashlib, sys 
 globalWindow = 5
 ackQueue = Queue.Queue()
 server_ip = '127.0.0.1'
 server_port = 5007
 self_ip = '127.0.0.1'
 self_port = 6005
+unrel_rcvr_stop = False
 
 def main():
     send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -14,11 +14,14 @@ def main():
     data2 = "A wonderful fact to reflect upon, that every human creature is constituted to be that profound secret and mystery to every other. A solemn consideration, when I enter a great city by night, that every one of those darkly clustered houses encloses its own secret; that every room in every one of them encloses its own secret; that every beating heart in the hundreds of thousands of breasts there, is, in some of its imaginings, a secret to the heart nearest it! Something of the awfulness, even of Death itself, is referable to this. No more can I turn the leaves of this dear book that I loved, and vainly hope in time to read it all. No more can I look into the depths of this unfathomable water, wherein, as momentary lights glanced into it, I have had glimpses of buried treasure and other things submerged. It was appointed that the book should shut with a spring, for ever and for ever, when I had read but a page. It was appointed that the water should be locked in an eternal frost, when the light was playing on its surface, and I stood in ignorance on the shore. My friend is dead, my neighbour is dead, my love, the darling of my soul, is dead; it is the inexorable consolidation and perpetuation of the secret that was always in that individuality, and which I shall carry in mine to my life's end. In any of the burial-places of this city through which I pass, is there a sleeper more inscrutable than its busy inhabitants are, in their innermost personality, to me, or than I am to them?"
     rcvr = threading.Thread(target=unrelReceiver, args=(unrel_rcv, '127.0.0.1', 6005))
     rcvr.start()
-    # authenticated = False
-    # while not authenticated:
-    #     authenticated = handshake(server_ip, server_port, send_sock)
+    authenticated = False
+    while not authenticated:
+        authenticated = handshake(server_ip, server_port, send_sock)
     s = threading.Thread(target = relSender, args= (send_sock, data2, 0, 0, 5, 5) )
     s.start()
+    print "here"
+    sys.exit()
+    sys.exit()
 
 def handshake(server_ip, server_port, send_socket):
     global self_ip, self_port
@@ -44,25 +47,31 @@ def handshake(server_ip, server_port, send_socket):
                     challenge_resp = hashlib.md5(pack.payload).hexdigest()
                     syn_ack_rcvd = True
                     break
-    ack_flag = 1
-    send_packet = makePacket(
-        server_ip, self_port, server_ip, server_port, 0, 0, 0, 0, ack_flag,
-        0, 0, 0, 0, 100000, challenge_resp)
-    send_socket.sendto(send_packet, (server_ip, server_port))
-    send_time = time.time()
-    print "Sent challenge_resp"
-    while int(send_time - time.time()) < 10:
-        if not ackQueue.empty():
-            print "HERE"
-            rcvd_packet = ackQueue.get()
-            pack = packet.Packet()
-            pack.createPacketFromString(rcvd_packet)
-            print "ACK packet", 
-            print pack.packlist
-            if pack.isACK():
-                print "Got ACK"
-                return True
-    return False
+    ack_rcvd = False
+    attempts = 0
+    while not ack_rcvd and attempts < 10:
+        ack_flag = 1
+        send_packet = makePacket(
+            server_ip, self_port, server_ip, server_port, 0, 0, 0, 0, ack_flag,
+            0, 0, 0, 0, 100000, challenge_resp)
+        send_socket.sendto(send_packet, (server_ip, server_port))
+        send_time = time.time()
+        print "Sent challenge_resp"
+        while int(send_time - time.time()) < 10:
+            if not ackQueue.empty():
+                print "HERE"
+                rcvd_packet = ackQueue.get()
+                pack = packet.Packet()
+                pack.createPacketFromString(rcvd_packet)
+                print "ACK packet", 
+                print pack.packlist
+                if pack.isACK():
+                    ack_rcvd = True
+                    print "Got ACK"
+                    return True
+                else: 
+                    attempts += 1
+    return ack_rcvd
 
 def close(server_ip, server_port, seq_num, send_socket):
     global self_ip, self_port
@@ -85,7 +94,7 @@ def close(server_ip, server_port, seq_num, send_socket):
                 pack.createPacketFromString(rcvd_packet)
                 print pack.packlist
                 if pack.isACK() and pack.isFIN():
-                    print "Got ACK"
+                    print "Got FIN ACK"
                     ack_rcvd = True
                     seq_num += 1
                     break
@@ -95,6 +104,10 @@ def close(server_ip, server_port, seq_num, send_socket):
             self_ip, self_port, server_ip, server_port, seq_num, seq_num, 0, 0, ack_flag,
             0, 0, 0, 0, 100000, '')
         send_socket.sendto(send_packet, (server_ip, server_port))
+        print "RETURN TRUE"
+        return True
+    else: 
+        return False
 
 def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
     global globalWindow, ackQueue, server_ip, server_port
@@ -110,8 +123,8 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
     baseBase = base
     recvSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     dataList = messageSplit(data, packetSize)
-    t = threading.Thread(target=unrelReceiver, args=(recvSocket, selfIP, selfPort))
-    t.start()
+    un_rel_rcvr = threading.Thread(target=unrelReceiver, args=(recvSocket, selfIP, selfPort))
+    un_rel_rcvr.start()
     firstsent = 1
     unAckedPackets = []
     while ackNum < len(dataList):
@@ -184,10 +197,14 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                         print "nextSeqNumber: %d" %(nextSeqNumber)
                     if base >= nextSeqNumber and ackNum >= len(dataList):
                         print "ACK base == nextSeqNumber, timer stoping"
+                        timer = False
                         ackQueue.queue.clear()
                         send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                        close(server_ip, server_port, nextSeqNumber, send_sock)
-                        timer = False
+                        exit = close(server_ip, server_port, nextSeqNumber, send_sock)
+                        if exit:
+                            unrel_rcvr_stop = True
+                            print "exiting"
+                            sys.exit()
                     else:
                         print "restarting timer"
                         timer = True
@@ -196,11 +213,13 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                         print len(dataList)
 
 def unrelReceiver(sock, IP, PORT):
-    global ackQueue
+    global ackQueue, unrel_rcvr_stop
     sock.bind((IP, PORT))
     while True:
-            data, addr = sock.recvfrom(1024)
-            ackQueue.put(data)
+        data, addr = sock.recvfrom(1024)
+        ackQueue.put(data)
+    print "unrelReceiver exiting"
+    sys.exit()
  
 def unrelSender():
     return
