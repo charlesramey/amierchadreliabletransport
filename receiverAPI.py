@@ -16,7 +16,7 @@ def main():
 	#print "LEGGO"
 	print rapi.relRecv()
 	print rapi.relRecv()
-
+	sys.exit(0)
 	# print "Starting receiver"
 
 	# dq = dataqueue.DataQueue()
@@ -48,38 +48,28 @@ class ReceiverAPI:
 		selfPort = conn.my_recvPort
 		print "Waiting on SYN"
 		while True:
-		
 			pack = packet.Packet()
 			packet_data, address = recvSocket.recvfrom(1024)
 			pack.createPacketFromString(packet_data)
 			source_ip = pack.sourceIP
 			source_port = pack.sourcePort
-
-
 			#print packet_data
 			#add check for authentication
-
-
 			if pack.isSYN():
 				print "HERE, RECEIVED SYN"
 				authenticated = self.handshake(selfIP, selfPort, source_ip, source_port, recvSocket, conn)
 				if authenticated:
 					#do stuff to record that client is authenticated
-
 					recvSocket.close()
 					recvSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 					recvSocket.bind((selfIP, selfPort))
-
 					print "AUTHENTICATED"
-
 					##############################
 					conn.peer_ip = source_ip
 					conn.peer_sendPort = address[1]
 					conn.recvSocket = recvSocket
-
 					conn.status = True
 					##############################
-
 					return conn
 				else:
 					return None
@@ -93,8 +83,6 @@ class ReceiverAPI:
 		send_packet = self.makePacket(
 	        self_ip, self_port, client_ip, client_port, 0, 0, 0, syn_flag, ack_flag,
 	        0, 0, 0, 5, conn.my_sendPort , challenge)
-
-
 		sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		sender.sendto(send_packet, (client_ip, client_port))
 		challenge_rcvd = False
@@ -111,16 +99,12 @@ class ReceiverAPI:
 					print "PACKET WAS ACK"
 					print pack.payload
 					print hashed_challenge
-
 					conn.peer_recvPort = pack.timeStamp
-
-
 					if pack.payload == hashed_challenge:
 						#authenticate
 						send_packet = self.makePacket(
 	        				self_ip, self_port, client_ip, client_port, 0, 0, 0, 0, ack_flag,
 	        				0, 0, 0, 5, conn.my_sendPort, challenge)
-
 						sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 						sender.sendto(send_packet, (client_ip, client_port))
 						challenge_rcvd = True
@@ -140,7 +124,6 @@ class ReceiverAPI:
 		return False
 
 	def windowChange(self, conn):
-
 		if (self.randomWindowChange and random.random() > 0.1):
 			conn.my_recvWindow = int(random.random() * 10) + 1
 			#print "YUH"
@@ -292,7 +275,7 @@ class ReceiverAPI:
 					exit = self.close(selfIP, selfPort, source_ip, source_port, recvSocket)
 					if exit:
 						print "EXITING?"
-						sys.exit()
+						sys.exit(0)
 
 
 			packetIsFirst = pack.isFirst()

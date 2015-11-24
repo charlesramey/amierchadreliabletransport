@@ -13,22 +13,15 @@ def main():
     global start_time
     send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     #unrel_rcv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-
     data = "TEST MESSAGE, THIS IS AN EXAMPLE OF DATA THAT CAN BE SENT AMONG OTHER THINGS THAT CAN BE SENT!!!!!"
     data2 = "A wonderful fact to reflect upon, that every human creature is constituted to be that profound secret and mystery to every other. A solemn consideration, when I enter a great city by night, that every one of those darkly clustered houses encloses its own secret; that every room in every one of them encloses its own secret; that every beating heart in the hundreds of thousands of breasts there, is, in some of its imaginings, a secret to the heart nearest it! Something of the awfulness, even of Death itself, is referable to this. No more can I turn the leaves of this dear book that I loved, and vainly hope in time to read it all. No more can I look into the depths of this unfathomable water, wherein, as momentary lights glanced into it, I have had glimpses of buried treasure and other things submerged. It was appointed that the book should shut with a spring, for ever and for ever, when I had read but a page. It was appointed that the water should be locked in an eternal frost, when the light was playing on its surface, and I stood in ignorance on the shore. My friend is dead, my neighbour is dead, my love, the darling of my soul, is dead; it is the inexorable consolidation and perpetuation of the secret that was always in that individuality, and which I shall carry in mine to my life's end. In any of the burial-places of this city through which I pass, is there a sleeper more inscrutable than its busy inhabitants are, in their innermost personality, to me, or than I am to them?"
- 
-
-
     sapi = SenderAPI('127.0.0.1', 5007)
-
     authenticated = False
     while not authenticated:
         authenticated = sapi.handshake(send_sock)
-
     sapi.relSender(send_sock, data)
     sapi.relSender(send_sock, data2)
-
+    sys.exit(0)
 
     # #authenticated = False
     #while not authenticated:
@@ -108,23 +101,17 @@ class SenderAPI:
      
     def makePacket(self, sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload):
         return header.getPacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload)
-     
-     
 
     def handshake(self, conn):
-
         self.initRecvThreadSockPort(conn)
         handshakeSocket = self.recvThreadSock
-
         server_ip = conn.peer_ip
         server_port = conn.peer_recvPort
         self_ip = conn.ip
         self_port = self.recvThreadSockPort
         send_socket = conn.sendSocket
-
         rcvr = threading.Thread(target=self.unrelReceiver, args=(handshakeSocket, conn.ip, self_port))
         rcvr.start()
-
         ackQueue = self.ackQueue
         syn_flag = 1
         send_packet = self.makePacket(
@@ -142,7 +129,6 @@ class SenderAPI:
                     rcvd_packet = ackQueue.get()
                     pack = packet.Packet()
                     pack.createPacketFromString(rcvd_packet)
-
                     print pack.packlist
                     if pack.isSYNACK():
                         print "Got challenge"
@@ -169,28 +155,23 @@ class SenderAPI:
                     pack = packet.Packet()
                     pack.createPacketFromString(rcvd_packet)
                     conn.peer_recvWindow = pack.recvWindow
-
                     print "ACK packet", 
                     print pack.packlist
                     if pack.isACK():
                         ack_rcvd = True
                         print "Got ACK"
-
                         ##############################
                         conn.peer_sendPort = pack.timeStamp
                         conn.status = True
                         conn.printConnection()
                         return conn
                         ##############################
-
                         return True
                     else: 
                         attempts += 1
-
         return ack_rcvd
 
     def close(self, conn):
-
         self_ip = conn.ip
         self_port = conn.my_sendPort
         server_ip = conn.peer_ip
@@ -198,10 +179,7 @@ class SenderAPI:
         seq_num = 0
         send_socket = conn.sendSocket
         ackQueue = self.ackQueue
-
         conn.printConnection()
-
-
         fin_flag = 1
         send_packet = self.makePacket(
             self_ip, self.recvThreadSockPort, server_ip, server_port, seq_num, seq_num, 0, 0, 0,
@@ -235,31 +213,26 @@ class SenderAPI:
             send_socket.sendto(send_packet, (server_ip, server_port))
             print "RETURN TRUE"
             return True
-        else: 
+            print "BLERGH"
+        else:
+            print "MEEHHHHHH"
             return False
 
     def relSender(self, conn, data):
         timeTracker = {}
-        
         sendSocket = conn.sendSocket
         peer_ip = conn.peer_ip
         peer_port = conn.peer_recvPort
-
-
-
         ackQueue = self.ackQueue
         packetSize = 5
         flowWindow = 5 #conn.peer_recvWindow#
-
         if (self.recvThreadSock == None):
             print "NOOOO"
             self.initRecvThreadSockPort(conn)
-
         recvSocket = self.recvThreadSock
         #recvSocket.bind(0)
         selfIP = conn.ip
         selfPort = self.recvThreadSockPort
-
         timer = False
         ackNum = -1
         sent = 0
@@ -269,9 +242,9 @@ class SenderAPI:
         baseBase = 0
         nextSeqNumber = 0
         base = 0
-        
         dataList = self.messageSplit(data, packetSize)
         un_rel_rcvr = threading.Thread(target=self.unrelReceiver, args=(recvSocket, selfIP, selfPort))
+        un_rel_rcvr.daemon = True
         un_rel_rcvr.start()
         firstsent = 1
         unAckedPackets = []
@@ -288,13 +261,9 @@ class SenderAPI:
                     packetSize, 0, 0, 0, last_packet, firstsent, self.getReceiveWindow(conn), self.getCurrentTime(), dataList[packetNumber]
                     )
                 sendSocket.sendto(sendPacket, (peer_ip, peer_port))
-
                 #####TIMEOUT STUFF########
                 timeTracker[packetNumber] = time.time()
                 ##########################
-
-                #timeTracker[packetNumber] = self.getCurrentTime()
-                #print "TIME TRACKER:"+str(timeTracker[packetNumber])
                 unAckedPackets.append(packetNumber)
                 firstsent = 0
                 sent += 1
@@ -308,33 +277,21 @@ class SenderAPI:
                 currentTime = time.time()
                 seconds = int(currentTime-timerStart)
                 if seconds != lastPrinted:
-                    #print seconds
                     lastPrinted = seconds
                 if timer and int(currentTime-timerStart) > 5:
-                    #print "Timer timed out"
                     for packetNum in unAckedPackets:
-                        #print "RE_Sending seqNum = %d" %(packetNum)
-                        #print "RE-Sending: %s" %(dataList[packetNum])
-
                         if packetNum + 1 == len(dataList):
-                            #print "LAST PACKET"+str(dataList[packetNumber])
                             last_packet = 1
-
                         if packetNum == 0:
                             firstsent = 1
-
                         sendPacket = self.makePacket(
                             selfIP, selfPort, peer_ip, peer_port, packetNum,
                             packetNum, packetSize, 0, 0, 0, last_packet, firstsent, self.getReceiveWindow(conn),
                             self.getCurrentTime(), dataList[packetNum]
                             )
-                            
                         last_packet = 0
                         sendSocket.sendto(sendPacket, (peer_ip, peer_port))
-                        #timeTracker[packetNumber] = self.getCurrentTime()
                         firstsent = 0
-                    #after resend, restart unrelReceiver and timer
-                    #print "TIMER RESTARTED AFTER RESEND"
                     timerStart = time.time()
                     timer = True
                 else:
@@ -343,48 +300,27 @@ class SenderAPI:
                         pack = packet.Packet()
                         pack.createPacketFromString(ackPacket)
                         if not pack.isCorrupt():
-                            #print "got ack! %d" %(pack.ackNum)
                             ackNum =  pack.ackNum
                             conn.peer_recvWindow = pack.recvWindow #max(pack.recvWindow/packetSize, 1)
-                            #print "FLOW WINDOW:"+str(flowWindow)
-                            #print timeTracker[ackNum - 1]
-                            #self.updateTimeout(timeTracker[ackNum - 1])
-                            #print "WE SHOULD UPDATE!"
-
                             base = ackNum + 1
-                            #print base
-                            #print len(dataList)
-
                             ####UPDATE TIMEOUT#####
                             if (ackNum in timeTracker):
                                 self.timeoutTime = (.25 * ((time.time() - timeTracker[ackNum]) * 100) + .75 * self.timeoutTime)
                                 print "TIMEOUT TIME:"+str(self.timeoutTime) 
                             #######################
-
                             if ackNum in unAckedPackets:
                                 if unAckedPackets.index(ackNum) == (len(unAckedPackets) - 1):
                                     unAckedPackets.remove(ackNum)
                                 else:
                                     unAckedPackets = unAckedPackets[unAckedPackets.index(ackNum):]
-                            #print "base = %d" %(base)
-                            #print "nextSeqNumber: %d" %(nextSeqNumber)
                         if base >= nextSeqNumber and ackNum >= len(dataList):
-                            #print "ACK base == nextSeqNumber, timer stoping"
-                            #self.killReceiver(recvSocket)
-                            
                             timer = False
                             ackQueue.queue.clear()
                             continue
-                            send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                            exit = close(server_ip, server_port, nextSeqNumber, send_sock)
-                            if exit:
-                                print "exiting"
                         else:
                             print "restarting timer"
                             timer = True
                             timerStart = time.time()
-                            #print ackNum
-                            #print len(dataList)
 
 
  
