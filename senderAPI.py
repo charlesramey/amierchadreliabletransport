@@ -283,7 +283,7 @@ class SenderAPI:
                     )
                 sendSocket.sendto(sendPacket, (peer_ip, peer_port))
 
-                timeTracker[packetNumber] = self.getCurrentTime()
+                #timeTracker[packetNumber] = self.getCurrentTime()
                 #print "TIME TRACKER:"+str(timeTracker[packetNumber])
                 unAckedPackets.append(packetNumber)
                 firstsent = 0
@@ -303,6 +303,7 @@ class SenderAPI:
                 if timer and int(currentTime-timerStart) > 5:
                     #print "Timer timed out"
                     for packetNum in unAckedPackets:
+                        print unAckedPackets
                         #print "RE_Sending seqNum = %d" %(packetNum)
                         #print "RE-Sending: %s" %(dataList[packetNum])
 
@@ -321,7 +322,7 @@ class SenderAPI:
                             
                         last_packet = 0
                         sendSocket.sendto(sendPacket, (peer_ip, peer_port))
-                        timeTracker[packetNumber] = self.getCurrentTime()
+                        #timeTracker[packetNumber] = self.getCurrentTime()
                         firstsent = 0
                     #after resend, restart unrelReceiver and timer
                     #print "TIMER RESTARTED AFTER RESEND"
@@ -338,10 +339,13 @@ class SenderAPI:
                             flowWindow = 5 #max(pack.recvWindow/packetSize, 1)
                             #print "FLOW WINDOW:"+str(flowWindow)
                             #print timeTracker[ackNum - 1]
-                            self.updateTimeout(timeTracker[ackNum - 1])
-
+                            #self.updateTimeout(timeTracker[ackNum - 1])
+                            print "WE SHOULD UPDATE!"
 
                             base = ackNum + 1
+                            print base
+                            print len(dataList)
+
                             if ackNum in unAckedPackets:
                                 if unAckedPackets.index(ackNum) == (len(unAckedPackets) - 1):
                                     unAckedPackets.remove(ackNum)
@@ -352,9 +356,10 @@ class SenderAPI:
                         if base >= nextSeqNumber and ackNum >= len(dataList):
                             #print "ACK base == nextSeqNumber, timer stoping"
                             #self.killReceiver(recvSocket)
-                            continue
+                            
                             timer = False
                             ackQueue.queue.clear()
+                            continue
                             send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                             exit = close(server_ip, server_port, nextSeqNumber, send_sock)
                             if exit:

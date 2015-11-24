@@ -1,4 +1,4 @@
-import receiverAPI, senderAPI, connection, sys, socket, threading
+import receiverAPI, senderAPI, connection, sys, socket, threading, time
 
 
 def main():
@@ -13,6 +13,7 @@ def main():
 		print rxpObj.receive()
 		print rxpObj.receive()
 		rxpObj.send("HOLY BOYS")
+		print rxpObj.receive()
 
 	else:
 		rxpClient = RXP()
@@ -21,6 +22,7 @@ def main():
 		rxpClient.send("WE DID IT BOYS!!!!!!!!! AYY LMAO")
 		rxpClient.send("FUCK TO THE YEAH :D")
 		print rxpClient.receive()
+		rxpClient.send("FUCK TO THE YEAH AGAIN!")
 		rxpClient.close()
 
 
@@ -31,10 +33,8 @@ class RXP:
 	def __init__(self):
 		self.type = None
 		self.conn = None
-
 		self.receiver = None
 		self.sender = None
-
 		self.receiveThread = None
 
 
@@ -138,8 +138,8 @@ class RXP:
 
 
 	def send(self, message):
-
 		self.sender.relSender(self.conn, message)
+		
 
 	def receive(self):
 		return self.receiver.relRecv()

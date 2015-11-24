@@ -5,7 +5,7 @@ mq = None
 dq = None
 host = "127.0.0.1"
 port = 5007
-randomPacketDropping = True
+randomPacketDropping = False
 flowControlCongestion = False
 synced = False
 
@@ -181,8 +181,8 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 
 		if pack.isExpectedSeqNum(expectedSeqNum):
 			data = pack.payload
-			#print "DATA: %s" %(data) 
-			#print "SEQ: "+str(pack.seqNum)
+			print "DATA: %s" %(data) 
+			print "SEQ: "+str(pack.seqNum)
 			receivedSeqNum = pack.seqNum
 			addr = (pack.sourceIP, pack.sourcePort)
 			if (setFirst and packetIsLast):

@@ -1,12 +1,5 @@
 import threading, socket, header, time, Queue, random, packet, dataqueue, hashlib, string, sys, connection
-mq = None
-dq = None
-host = "127.0.0.1"
-port = 5007
-randomPacketDropping = False
 
-
-calculatedTimeout = 5
 
 def main():
 	print "TEST"
@@ -45,13 +38,9 @@ class ReceiverAPI:
 	def __init__(self):
 		self.dq = dataqueue.DataQueue()
 		self.mq = dataqueue.MessageQueue()
-		self.randomPacketDropping = False
+		self.randomPacketDropping = True
 		self.start_time = 0
 		self.conn = None
-
-
-
-
 
 	def listen(self, recvSocket, conn):
 		selfIP = conn.ip
@@ -143,7 +132,7 @@ class ReceiverAPI:
 
 
 	def packetDrop(self):
-		if (self.randomPacketDropping and random.random() > 0.97):
+		if (self.randomPacketDropping and random.random() > 0.95):
 			return True
 		return False
 
@@ -296,10 +285,14 @@ class ReceiverAPI:
 			packetIsFirst = pack.isFirst()
 			packetIsLast = pack.isLast()
 
+			print "GOT DATA: %s" %(pack.payload) 
+			print "SEQ: "+str(pack.seqNum)
 			#print "TIMESTAMP: "+str(pack.timeStamp)
 			#print "129"
 			if pack.isCorrupt() or self.filterPacket(pack, conn) or self.packetDrop():
 				continue
+
+			addr = (pack.sourceIP, pack.sourcePort)
 
 			if setFirst == False and packetIsFirst:
 				setFirst = True
@@ -308,10 +301,10 @@ class ReceiverAPI:
 
 			if pack.isExpectedSeqNum(expectedSeqNum):
 				data = pack.payload
-				#print "DATA: %s" %(data) 
-				#print "SEQ: "+str(pack.seqNum)
+				print "DATA: %s" %(data) 
+				print "SEQ: "+str(pack.seqNum)
 				receivedSeqNum = pack.seqNum
-				addr = (pack.sourceIP, pack.sourcePort)
+				
 
 				if (setFirst and packetIsLast):
 					pushedData = self.pushData(0)
@@ -320,6 +313,7 @@ class ReceiverAPI:
 
 					mq.enqueue(currentMessage)
 					currentMessage = ""
+					#expectedSeqNum = 0
 					setFirst = False
 				else:
 					pushedData = self.pushData(0)
@@ -339,8 +333,10 @@ class ReceiverAPI:
 				print "INCORRECT SEQ NUMBER"
 				print "Pack seq num: %s" %(str(pack.seqNum))
 				print "exptd seq num: %d" %(expectedSeqNum)
+
+				if (ackPacket == None):
+					continue	
 				recvSocket.sendto(ackPacket, addr)
-				continue
 			else:
 				#print "177"
 				if (setFirst) and addr:
