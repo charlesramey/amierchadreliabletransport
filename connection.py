@@ -14,6 +14,7 @@ class Connection:
 		self.my_recvWindow = 5
 		self.peer_recvWindow = 5
 		self.status = False
+		self.netEmuPort = 0
 
 
 	def printConnection(self):
