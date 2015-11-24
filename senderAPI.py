@@ -59,6 +59,7 @@ class SenderAPI:
         self.recvThreadSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.recvThreadSock.bind((conn.ip, 0))
         self.recvThreadSockPort = self.recvThreadSock.getsockname()[1]
+        print "!!!!!!!!!!!!!!!!!SR NAME ="+str(self.recvThreadSockPort)
 
 
     def killReceiver(self, recvSock):
@@ -203,8 +204,10 @@ class SenderAPI:
 
         fin_flag = 1
         send_packet = self.makePacket(
-            self_ip, self_port, server_ip, server_port, seq_num, seq_num, 0, 0, 0,
+            self_ip, self.recvThreadSockPort, server_ip, server_port, seq_num, seq_num, 0, 0, 0,
             fin_flag, 0, 0, 5, 100000, '')
+        print "CLOSE"+str(server_port)
+        print "CLOSE"+str(server_port)
         ack_rcvd = False
         tries = 0
         while not ack_rcvd and tries < 10:
@@ -227,7 +230,7 @@ class SenderAPI:
         if ack_rcvd:
             ack_flag = 1
             send_packet = self.makePacket(
-                self_ip, self_port, server_ip, server_port, seq_num, seq_num, 0, 0, ack_flag,
+                self_ip, self.recvThreadSockPort, server_ip, server_port, seq_num, seq_num, 0, 0, ack_flag,
                 0, 0, 0, 5, 100000, '')
             send_socket.sendto(send_packet, (server_ip, server_port))
             print "RETURN TRUE"

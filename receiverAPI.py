@@ -223,6 +223,7 @@ class ReceiverAPI:
 	        self_ip, self_port, client_ip, client_port, 0, 0, 0, 0, ack_flag,
 	        fin_flag, 0, 0, 5, 100000, 'FIN ACK')
 		sender.sendto(send_packet, (client_ip, client_port))
+		print "SENDING FIN ACK TO"+str(client_port)
 		ack_rcvd = False
 		attempts = 0
 		while not ack_rcvd and attempts < 10:
@@ -239,6 +240,7 @@ class ReceiverAPI:
 	        			self_ip, self_port, client_ip, client_port, 0, 0, 0, 0, ack_flag,
 	        			0, 0, 0, 5, 100000, 'ACK')
 					sender.sendto(send_packet, (client_ip, client_port))
+					print "SENDING ACK TO"
 					ack_rcvd = True
 			except socket.timeout:
 				sender.sendto(send_packet, (client_ip, client_port))
