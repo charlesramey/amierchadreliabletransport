@@ -5,7 +5,7 @@ mq = None
 dq = None
 host = "127.0.0.1"
 port = 5007
-randomPacketDropping = True
+randomPacketDropping = False
 flowControlCongestion = False
 synced = False
 
@@ -38,8 +38,6 @@ def relRecv():
 		i = 0
 	out = mq.dequeue()
 	return out
-
-
 
 def handshake(self_ip, self_port, client_ip, client_port, rcvr):
 	challenge = random_string()
@@ -146,7 +144,7 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 					i = 0
 				print "AUTHENTICATED"
 				synced = True
-				expectedSeqNum = 0
+				continue
 		if pack.isFIN():
 			print "CLOSING HANDSHAKE"
 			if pack.isExpectedSeqNum(expectedSeqNum):
@@ -156,6 +154,7 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 					sys.exit()
 		packetIsFirst = pack.isFirst()
 		packetIsLast = pack.isLast()
+
 		if pack.isCorrupt() or packetDrop():
 			continue
 		if setFirst == False and packetIsFirst:
@@ -164,8 +163,8 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 			expectedSeqNum = pack.seqNum
 		if pack.isExpectedSeqNum(expectedSeqNum):
 			data = pack.payload
-			#print "DATA: %s" %(data) 
-			#print "SEQ: "+str(pack.seqNum)
+			print "DATA: %s" %(data) 
+			print "SEQ: "+str(pack.seqNum)
 			receivedSeqNum = pack.seqNum
 			addr = (pack.sourceIP, pack.sourcePort)
 			if (setFirst and packetIsLast):
