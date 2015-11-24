@@ -1,9 +1,4 @@
-<<<<<<< HEAD
-import receiverAPI, senderAPI, connection, sys, socket, threading
-=======
 import receiverAPI, senderAPI, connection, sys, socket, threading, time
->>>>>>> 23c5985c358a3cb5d1deb95b35cc974ee6ac869f
-
 
 def main():
 	print "Hello"
@@ -18,6 +13,7 @@ def main():
 		print rxpObj.receive()
 		rxpObj.send("HOLY BOYS")
 		print rxpObj.receive()
+		sys.exit(0)
 
 	else:
 		rxpClient = RXP()
@@ -28,6 +24,7 @@ def main():
 		print rxpClient.receive()
 		rxpClient.send("FUCK TO THE YEAH AGAIN!")
 		rxpClient.close()
+		sys.exit(0)
 
 
 
@@ -37,26 +34,11 @@ class RXP:
 	def __init__(self):
 		self.type = None
 		self.conn = None
-<<<<<<< HEAD
-
-		self.receiver = None
-		self.sender = None
-
-		self.receiveThread = None
-=======
 		self.receiver = None
 		self.sender = None
 		self.receiveThread = None
 
->>>>>>> 23c5985c358a3cb5d1deb95b35cc974ee6ac869f
-
 	def establish_client(self):
-
-<<<<<<< HEAD
-	def establish_client(self):
-
-=======
->>>>>>> 23c5985c358a3cb5d1deb95b35cc974ee6ac869f
 		if (self.type != None):
 			return
 		self.type = "client"
@@ -148,29 +130,14 @@ class RXP:
 		if (self.conn == None):
 			print "Could Not Connect. Exiting"
 			sys.exit(0)
-<<<<<<< HEAD
 
 		self.receiver = receiverAPI.ReceiverAPI()
 		r = threading.Thread(target=self.runReceiveThread)
 		r.start()
-=======
->>>>>>> 23c5985c358a3cb5d1deb95b35cc974ee6ac869f
-
-		self.receiver = receiverAPI.ReceiverAPI()
-		r = threading.Thread(target=self.runReceiveThread)
-		r.start()
-
-<<<<<<< HEAD
-	def send(self, message):
-
-		self.sender.relSender(self.conn, message)
-=======
 
 	def send(self, message):
 		self.sender.relSender(self.conn, message)
 		
->>>>>>> 23c5985c358a3cb5d1deb95b35cc974ee6ac869f
-
 	def receive(self):
 		return self.receiver.relRecv()
 

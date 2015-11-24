@@ -38,7 +38,6 @@ def handshake(server_ip, server_port, send_socket):
     while not syn_ack_rcvd:
         send_socket.sendto(send_packet, (server_ip, server_port))
         send_time = time.time()
-        #print "Sent SYN"
         while int(send_time - time.time()) < 5:
             if not ackQueue.empty():
                 print "recved something"
@@ -75,7 +74,6 @@ def handshake(server_ip, server_port, send_socket):
                     return True
                 else: 
                     attempts += 1
-    #send_socket.sendto("CLOSEDOWNNPLZKTHXBYE", (self_ip, self_port))
     return ack_rcvd
 
 def close(server_ip, server_port, seq_num, send_socket):
@@ -148,14 +146,11 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                 5, 0, 0, 0, last_packet, firstsent, getReceiveWindow(), getCurrentTime(), dataList[packetNumber]
                 )
             sendSocket.sendto(sendPacket, ("127.0.0.1", 5007))
-
             timeTracker[packetNumber] = getCurrentTime()
-            #print "TIME TRACKER:"+str(timeTracker[packetNumber])
             unAckedPackets.append(packetNumber)
             firstsent = 0
             sent += 1
             if base == nextSeqNumber:
-                #startTimer
                 timerStart = time.time()
                 timer = True
                 print "base == nextSeqNumber, timer started"

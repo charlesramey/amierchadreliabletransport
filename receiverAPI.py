@@ -16,7 +16,7 @@ def main():
 	#print "LEGGO"
 	print rapi.relRecv()
 	print rapi.relRecv()
-
+	sys.exit()
 	# print "Starting receiver"
 
 	# dq = dataqueue.DataQueue()
@@ -38,7 +38,7 @@ class ReceiverAPI:
 	def __init__(self):
 		self.dq = dataqueue.DataQueue()
 		self.mq = dataqueue.MessageQueue()
-		self.randomPacketDropping = True
+		self.randomPacketDropping = False
 		self.start_time = 0
 		self.conn = None
 
@@ -47,7 +47,6 @@ class ReceiverAPI:
 		selfPort = conn.my_recvPort
 		print "Waiting on SYN"
 		while True:
-		
 			pack = packet.Packet()
 			packet_data, address = recvSocket.recvfrom(1024)
 			pack.createPacketFromString(packet_data)
@@ -55,28 +54,21 @@ class ReceiverAPI:
 			source_port = pack.sourcePort
 			#print packet_data
 			#add check for authentication
-
-
 			if pack.isSYN():
 				print "HERE, RECEIVED SYN"
 				authenticated = self.handshake(selfIP, selfPort, source_ip, source_port, recvSocket, conn)
 				if authenticated:
 					#do stuff to record that client is authenticated
-
 					recvSocket.close()
 					recvSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 					recvSocket.bind((selfIP, selfPort))
-
 					print "AUTHENTICATED"
-
 					##############################
 					conn.peer_ip = source_ip
 					conn.peer_sendPort = address[1]
 					conn.recvSocket = recvSocket
-
 					conn.status = True
 					##############################
-
 					return conn
 				else:
 					return None
@@ -130,29 +122,23 @@ class ReceiverAPI:
 		return challenge_rcvd
 
 
-
 	def packetDrop(self):
 		if (self.randomPacketDropping and random.random() > 0.95):
 			return True
 		return False
 
-
 	def filterPacket(self, pack, conn):
 		return False
 
-
 	def relRecv(self):
 		mq = self.mq
-
 		i = 0
 		while(mq.getSize() == 0):
 			i = 0
-
 		out = mq.dequeue()
 		return out
 
 	def pushData(self, randomly):
-
 		if (randomly == 0):
 			return self.pushAllData(self.dq)
 		else:
@@ -161,13 +147,11 @@ class ReceiverAPI:
 	def pushAllData(self, dq):
 		out = ""
 		sizeOfQueue = len(dq.queue)
-
 		for i in range(0, sizeOfQueue):
 			x = dq.dequeue()
 
 			if (x is not None):
 				out += str(x)
-
 		return out
 
 	def pushDataRandomly(self, dq):
@@ -175,7 +159,6 @@ class ReceiverAPI:
 		out = ""
 		for i in range (0, numPush):
 			x = dq.dequeue()
-
 			if (x is not None):
 				out += str(x)
 		return out
@@ -210,14 +193,16 @@ class ReceiverAPI:
 	def close(self, self_ip, self_port, client_ip, client_port, rcvr):
 		ack_flag = 1
 		fin_flag = 1
-		sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		send_packet = self.makePacket(
-	        self_ip, self_port, client_ip, client_port, 0, 0, 0, 0, ack_flag,
-	        fin_flag, 0, 0, 0, 100000, 'FIN ACK')
-		sender.sendto(send_packet, (client_ip, client_port))
 		ack_rcvd = False
 		attempts = 0
 		while not ack_rcvd and attempts < 10:
+			sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+			send_packet = self.makePacket(
+	        	'127.0.0.1', 5007, '127.0.0.1', client_port, 0, 0, 0, 0, ack_flag,
+	        	fin_flag, 0, 0, 0, 100000, 'FIN ACK')
+			sender.sendto(send_packet, (client_ip, client_port))
+			print "SENT FIN ACK"
+			print "ATTEMPTING TO RCV ACK"
 			rcvr.settimeout(5)
 			try:
 				ack_pack, address = rcvr.recvfrom(1024)
@@ -237,6 +222,8 @@ class ReceiverAPI:
 				attempts += 1
 				continue
 		print "returning"
+		if not ack_rcvd:
+			print "Returning FALSE"
 		return ack_rcvd
 
 	def random_string(self):
@@ -253,8 +240,6 @@ class ReceiverAPI:
 		selfPort = conn.my_recvPort
 		recvSocket = conn.recvSocket
 
-
-
 		setFirst = False
 		expectedSeqNum = 0
 		ackPacket = None
@@ -263,54 +248,42 @@ class ReceiverAPI:
 		authenticated_clients = []
 		i = 0
 		while True:
-			#print "waiting"
 			pack = packet.Packet()
 			packet_data, address = recvSocket.recvfrom(1024)
 			pack.createPacketFromString(packet_data)
 			source_ip = pack.sourceIP
 			source_port = pack.sourcePort
-			#print packet_data
-			#add check for authentication
-
 			if pack.isFIN():
 				print "CLOSING HANDSHAKE"
 				expectedSeqNum = 0
 				if pack.isExpectedSeqNum(expectedSeqNum):
+					print "SOURCE PORT: %d" %(source_port)
 					exit = self.close(selfIP, selfPort, source_ip, source_port, recvSocket)
 					if exit:
 						print "EXITING?"
 						sys.exit()
-
-
+					else:
+						print "exit returned false?"
 			packetIsFirst = pack.isFirst()
 			packetIsLast = pack.isLast()
-
 			print "GOT DATA: %s" %(pack.payload) 
 			print "SEQ: "+str(pack.seqNum)
-			#print "TIMESTAMP: "+str(pack.timeStamp)
-			#print "129"
 			if pack.isCorrupt() or self.filterPacket(pack, conn) or self.packetDrop():
 				continue
-
 			addr = (pack.sourceIP, pack.sourcePort)
-
 			if setFirst == False and packetIsFirst:
 				setFirst = True
 				currentMessage = ""
 				expectedSeqNum = pack.seqNum
-
 			if pack.isExpectedSeqNum(expectedSeqNum):
 				data = pack.payload
 				print "DATA: %s" %(data) 
 				print "SEQ: "+str(pack.seqNum)
 				receivedSeqNum = pack.seqNum
-				
-
 				if (setFirst and packetIsLast):
 					pushedData = self.pushData(0)
 					currentMessage += str(pushedData)
 					currentMessage += data
-
 					mq.enqueue(currentMessage)
 					currentMessage = ""
 					#expectedSeqNum = 0
@@ -329,16 +302,13 @@ class ReceiverAPI:
 				recvSocket.sendto(ackPacket, addr)
 				#print "We got SEQ:"+ str(pack.seqNum)
 			elif not pack.isExpectedSeqNum(expectedSeqNum):
-				#print "170"
 				print "INCORRECT SEQ NUMBER"
 				print "Pack seq num: %s" %(str(pack.seqNum))
 				print "exptd seq num: %d" %(expectedSeqNum)
-
 				if (ackPacket == None):
 					continue	
 				recvSocket.sendto(ackPacket, addr)
 			else:
-				#print "177"
 				if (setFirst) and addr:
 					recvSocket.sendto(ackPacket, addr)
 
