@@ -1,4 +1,6 @@
+
 import receiverAPI, senderAPI, connection, sys, socket, threading, time
+
 
 def main():
 	print "Hello"
@@ -13,7 +15,6 @@ def main():
 		print rxpObj.receive()
 		rxpObj.send("HOLY BOYS")
 		print rxpObj.receive()
-		sys.exit(0)
 
 	else:
 		rxpClient = RXP()
@@ -24,7 +25,6 @@ def main():
 		print rxpClient.receive()
 		rxpClient.send("FUCK TO THE YEAH AGAIN!")
 		rxpClient.close()
-		sys.exit(0)
 
 
 
@@ -38,7 +38,9 @@ class RXP:
 		self.sender = None
 		self.receiveThread = None
 
+
 	def establish_client(self):
+
 		if (self.type != None):
 			return
 		self.type = "client"
@@ -122,6 +124,7 @@ class RXP:
 
 		potentialConnection.peer_ip = ip
 		potentialConnection.peer_recvPort = port
+		print "OUUUUU:"+str(port)
 
 
 		self.sender = senderAPI.SenderAPI()
@@ -131,13 +134,17 @@ class RXP:
 			print "Could Not Connect. Exiting"
 			sys.exit(0)
 
+
 		self.receiver = receiverAPI.ReceiverAPI()
 		r = threading.Thread(target=self.runReceiveThread)
 		r.start()
 
+
+
 	def send(self, message):
 		self.sender.relSender(self.conn, message)
-		
+
+
 	def receive(self):
 		return self.receiver.relRecv()
 
