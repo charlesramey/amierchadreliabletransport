@@ -43,6 +43,10 @@ class SenderAPI:
         except socket.error:
             pass
         self.recvThreadSockPort = self.recvThreadSock.getsockname()[1]
+<<<<<<< HEAD
+=======
+        print "!!!!!!!!!!!!!!!!!SR NAME ="+str(self.recvThreadSockPort)
+>>>>>>> 5cc89efe5d8da3e544041c2d33c4aecc7631b7cd
 
     def killReceiver(self, recvSock):
         self.killOther = True
@@ -251,7 +255,11 @@ class SenderAPI:
                     selfIP, selfPort, peer_ip, peer_port, packetNumber, packetNumber,
                     packetSize, 0, 0, 0, last_packet, firstsent, self.getReceiveWindow(conn), self.getCurrentTime(), dataList[packetNumber]
                     )
+<<<<<<< HEAD
                 recvSocket.sendto(sendPacket, (peer_ip, peer_port))
+=======
+                sendSocket.sendto(sendPacket, (peer_ip, peer_port))
+>>>>>>> 5cc89efe5d8da3e544041c2d33c4aecc7631b7cd
                 #####TIMEOUT STUFF########
                 timeTracker[packetNumber] = time.time()
                 ##########################
@@ -281,7 +289,11 @@ class SenderAPI:
                             self.getCurrentTime(), dataList[packetNum]
                             )
                         last_packet = 0
+<<<<<<< HEAD
                         recvSocket.sendto(sendPacket, (peer_ip, peer_port))
+=======
+                        sendSocket.sendto(sendPacket, (peer_ip, peer_port))
+>>>>>>> 5cc89efe5d8da3e544041c2d33c4aecc7631b7cd
                         firstsent = 0
                     timerStart = time.time()
                     timer = True

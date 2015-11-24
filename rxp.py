@@ -37,9 +37,14 @@ def main():
 		rxpClient.close()
 		del rxpClient.sender
 		del rxpClient
+<<<<<<< HEAD
 
 		print "herro"
 		return
+=======
+		print "herro"
+
+>>>>>>> 5cc89efe5d8da3e544041c2d33c4aecc7631b7cd
 		time.sleep(10)
 
 		rxpClient = RXP()
