@@ -42,19 +42,20 @@ def startReceiveThread(rapi, recvSock):
 
 class ReceiverAPI:
 
-	def __init__(self, h, p):
+	def __init__(self):
 		self.dq = dataqueue.DataQueue()
 		self.mq = dataqueue.MessageQueue()
-		self.host = h
-		self.port = p
 		self.randomPacketDropping = False
 		self.start_time = 0
 		self.conn = None
 
 
-	def listen(self, recvSocket):
-		selfIP = self.host
-		selfPort = self.port
+
+
+
+	def listen(self, recvSocket, conn):
+		selfIP = conn.ip
+		selfPort = conn.my_recvPort
 		print "Waiting on SYN"
 		while True:
 		
@@ -69,24 +70,19 @@ class ReceiverAPI:
 
 			if pack.isSYN():
 				print "HERE, RECEIVED SYN"
-				authenticated = self.handshake(selfIP, selfPort, source_ip, source_port, recvSocket)
+				authenticated = self.handshake(selfIP, selfPort, source_ip, source_port, recvSocket, conn)
 				if authenticated:
 					#do stuff to record that client is authenticated
 
 					recvSocket.close()
 					recvSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-					recvSocket.bind((host, port))
+					recvSocket.bind((selfIP, selfPort))
 
 					print "AUTHENTICATED"
 
 					##############################
-					conn = connection.Connection()
 					conn.peer_ip = source_ip
-					conn.peer_recvPort = source_port
-					conn.peer_sendPort = pack.sourcePort
-
-					conn.ip = self.host
-					conn.my_recvPort = self.port
+					conn.peer_sendPort = address[1]
 					conn.recvSocket = recvSocket
 
 					conn.status = True
@@ -97,14 +93,16 @@ class ReceiverAPI:
 					return None
 				continue
 
-	def handshake(self, self_ip, self_port, client_ip, client_port, rcvr):
+	def handshake(self, self_ip, self_port, client_ip, client_port, rcvr, conn):
 		challenge = self.random_string()
 		hashed_challenge = hashlib.md5(challenge).hexdigest()
 		syn_flag = 1
 		ack_flag = 1
 		send_packet = self.makePacket(
 	        self_ip, self_port, client_ip, client_port, 0, 0, 0, syn_flag, ack_flag,
-	        0, 0, 0, 0, 100000, challenge)
+	        0, 0, 0, 0, conn.my_sendPort , challenge)
+
+
 		sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		sender.sendto(send_packet, (client_ip, client_port))
 		challenge_rcvd = False
@@ -121,11 +119,16 @@ class ReceiverAPI:
 					print "PACKET WAS ACK"
 					print pack.payload
 					print hashed_challenge
+
+					conn.peer_recvPort = pack.timeStamp
+
+
 					if pack.payload == hashed_challenge:
 						#authenticate
 						send_packet = self.makePacket(
 	        				self_ip, self_port, client_ip, client_port, 0, 0, 0, 0, ack_flag,
-	        				0, 0, 0, 0, 100000, challenge)
+	        				0, 0, 0, 0, conn.my_sendPort, challenge)
+
 						sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 						sender.sendto(send_packet, (client_ip, client_port))
 						challenge_rcvd = True
@@ -257,8 +260,8 @@ class ReceiverAPI:
 		self.start_time = time.time()
 		dq = self.dq
 		mq = self.mq
-		selfIP = self.host
-		selfPort = self.port
+		selfIP = conn.ip
+		selfPort = conn.my_recvPort
 		recvSocket = conn.recvSocket
 
 
@@ -309,6 +312,7 @@ class ReceiverAPI:
 				#print "SEQ: "+str(pack.seqNum)
 				receivedSeqNum = pack.seqNum
 				addr = (pack.sourceIP, pack.sourcePort)
+
 				if (setFirst and packetIsLast):
 					pushedData = self.pushData(0)
 					currentMessage += str(pushedData)

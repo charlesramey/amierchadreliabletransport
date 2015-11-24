@@ -12,6 +12,7 @@ def main():
 		rxpObj.listen("127.0.0.1", 5007)
 		print rxpObj.receive()
 		print rxpObj.receive()
+		rxpObj.send("HOLY BOYS")
 
 	else:
 		rxpClient = RXP()
@@ -19,6 +20,7 @@ def main():
 		rxpClient.connect("127.0.0.1", 5007)
 		rxpClient.send("WE DID IT BOYS!!!!!!!!! AYY LMAO")
 		rxpClient.send("FUCK TO THE YEAH :D")
+		print rxpClient.receive()
 		rxpClient.close()
 
 
@@ -61,31 +63,36 @@ class RXP:
 			recvSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 			recvSock.bind((ip, port))
 
-			self.sendSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-			self.sendSock.bind((ip, 0))
+			sendSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+			sendSock.bind((ip, 0))
 		except:
 			print "Could Not Bind! Exiting."
 			sys.exit(0)
 
 
-		self.receiver = receiverAPI.ReceiverAPI(ip, port)
+		potentialConnection = connection.Connection()
+		potentialConnection.ip = ip
+		potentialConnection.my_recvPort = port
+		potentialConnection.my_sendPort = sendSock.getsockname()[1]
+		potentialConnection.recvSocket = recvSock
+		potentialConnection.sendSocket = sendSock
 
-		self.conn = self.receiver.listen(recvSock)
-		if (self.conn == None):
+		
+		self.receiver = receiverAPI.ReceiverAPI()
+		self.receiver.listen(recvSock, potentialConnection)
+
+		if (potentialConnection.status == False):
 			print "Listen Timed Out. Exiting."
 			sys.exit(0)
 
+		self.conn = potentialConnection
 		self.conn.printConnection()
 
 		r = threading.Thread(target=self.runReceiveThread)
 		r.start()
 		self.receiveThread = r
+		self.sender = senderAPI.SenderAPI()
 
-		#self.sender = senderAPI.SenderAPI(ip, port)
-
-
-		#self.recvSock = other[2]
-		#self.partner = [other[0], other[1]]
 
 	def runReceiveThread(self):
 		self.receiver.relReceiver(self.conn)
@@ -107,12 +114,28 @@ class RXP:
 			sys.exit(0)
 
 
-		self.sender = senderAPI.SenderAPI(ip, port)
-		self.conn = self.sender.handshake(sendSock)
+		potentialConnection = connection.Connection()
+		potentialConnection.ip = '127.0.0.1' ##THIS CAUSES PROBLEMS WHEN TRYING TO CONNECT TO LOCALHOST
+		potentialConnection.my_recvPort = recvSock.getsockname()[1]	###CHECK THIS AGAIN
+		potentialConnection.my_sendPort = sendSock.getsockname()[1]
+		potentialConnection.recvSocket = recvSock
+		potentialConnection.sendSocket = sendSock
+
+		potentialConnection.peer_ip = ip
+		potentialConnection.peer_recvPort = port
+
+
+		self.sender = senderAPI.SenderAPI()
+		self.conn = self.sender.handshake(potentialConnection)
 
 		if (self.conn == None):
 			print "Could Not Connect. Exiting"
 			sys.exit(0)
+
+		self.receiver = receiverAPI.ReceiverAPI()
+		r = threading.Thread(target=self.runReceiveThread)
+		r.start()
+
 
 	def send(self, message):
 
