@@ -6,26 +6,25 @@ server_port = 5007
 self_ip = '127.0.0.1'
 self_port = 6005
 unrel_rcvr_stop = False
-
 start_time = 0
 calculatedTimeout = 0
 
 def main():
-    global start_time
+    global start_time, unrel_rcvr_stop, unrel_rcv
     send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     unrel_rcv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     data = "TEST MESSAGE, THIS IS AN EXAMPLE OF DATA THAT CAN BE SENT AMONG OTHER THINGS THAT CAN BE SENT!!!!!"
     data2 = "A wonderful fact to reflect upon, that every human creature is constituted to be that profound secret and mystery to every other. A solemn consideration, when I enter a great city by night, that every one of those darkly clustered houses encloses its own secret; that every room in every one of them encloses its own secret; that every beating heart in the hundreds of thousands of breasts there, is, in some of its imaginings, a secret to the heart nearest it! Something of the awfulness, even of Death itself, is referable to this. No more can I turn the leaves of this dear book that I loved, and vainly hope in time to read it all. No more can I look into the depths of this unfathomable water, wherein, as momentary lights glanced into it, I have had glimpses of buried treasure and other things submerged. It was appointed that the book should shut with a spring, for ever and for ever, when I had read but a page. It was appointed that the water should be locked in an eternal frost, when the light was playing on its surface, and I stood in ignorance on the shore. My friend is dead, my neighbour is dead, my love, the darling of my soul, is dead; it is the inexorable consolidation and perpetuation of the secret that was always in that individuality, and which I shall carry in mine to my life's end. In any of the burial-places of this city through which I pass, is there a sleeper more inscrutable than its busy inhabitants are, in their innermost personality, to me, or than I am to them?"
     rcvr = threading.Thread(target=unrelReceiver, args=(unrel_rcv, '127.0.0.1', 6005))
+    rcvr.daemon = True
     rcvr.start()
     authenticated = False
     while not authenticated:
         authenticated = handshake(server_ip, server_port, send_sock)
-    s = threading.Thread(target=relSender, args=(send_sock, data2, 0, 0, 5, 5) )
-    s.start()
-    print "here"
-    sys.exit()
-    sys.exit()
+        time.sleep(1)
+    relSender(send_sock, data2, 0, 0, 5, 5)
+    relSender(send_sock, data, 0, 0, 5, 5)    
+    sys.exit(0)
 
 
 def handshake(server_ip, server_port, send_socket):
@@ -117,7 +116,8 @@ def close(server_ip, server_port, seq_num, send_socket):
 
 def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
     timeTracker = {}
-    global globalWindow, ackQueue, server_ip, server_port
+    global globalWindow, ackQueue, server_ip, server_port, unrel_rcvr_stop
+    unrel_rcvr_stop = False
     flowWindow = 5
     selfIP = '127.0.0.1'
     selfPort = 6050
@@ -131,6 +131,7 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
     recvSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     dataList = messageSplit(data, packetSize)
     un_rel_rcvr = threading.Thread(target=unrelReceiver, args=(recvSocket, selfIP, selfPort))
+    un_rel_rcvr.daemon = True
     un_rel_rcvr.start()
     firstsent = 1
     unAckedPackets = []
@@ -170,6 +171,8 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                 for packetNum in unAckedPackets:
                     #print "RE_Sending seqNum = %d" %(packetNum)
                     #print "RE-Sending: %s" %(dataList[packetNum])
+                    if packetNum == 0:
+                        firstsent = 1
 
                     if packetNum + 1 == len(dataList):
                         #print "LAST PACKET"+str(dataList[packetNumber])
@@ -179,7 +182,8 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                         packetNum, 5, 0, 0, 0, last_packet, firstsent, getReceiveWindow(),
                         getCurrentTime(), dataList[packetNum]
                         )
-                        
+
+                    firstsent = 0
                     last_packet = 0
                     sendSocket.sendto(sendPacket, ('127.0.0.1', 5007))
                     timeTracker[packetNumber] = getCurrentTime()
@@ -212,10 +216,15 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                         #print "nextSeqNumber: %d" %(nextSeqNumber)
                     if base >= nextSeqNumber and ackNum >= len(dataList):
                         #print "ACK base == nextSeqNumber, timer stoping"
+                        continue
                         timer = False
                         ackQueue.queue.clear()
                         send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                         exit = close(server_ip, server_port, nextSeqNumber, send_sock)
+                        print "attempting to kill unrel_rcv"
+                        unrel_rcvr_stop = True
+                        time.sleep(1)
+                        print "killed!?"
                         if exit:
                             print "exiting"
                     else:
@@ -226,12 +235,17 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
                         #print len(dataList)
 
 def unrelReceiver(sock, IP, PORT):
-    global ackQueue, unrel_rcvr_stop
-    sock.bind((IP, PORT))
+    global ackQueue
+    try:
+        sock.bind((IP, PORT))
+    except socket.error:
+        pass
     while True:
         data, addr = sock.recvfrom(1024)
         ackQueue.put(data)
     print "unrelReceiver exiting"
+    sock.close()
+    sys.exit()
  
 def messageSplit(message, size):
     out = []
@@ -243,6 +257,7 @@ def messageSplit(message, size):
 
 def getCurrentTime():
     global start_time
+    return 0
     return int((time.time() - start_time) * 1000)
 
 def updateTimeout(inTime):

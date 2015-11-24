@@ -208,5 +208,15 @@ def calculateCheckSum(a, b):
 	return sumA ^ sumB
 
 
+
+def packTwo16(a, b):
+	return (a << 16) | b
+
+
+def unpackTwo16(x):
+	return [x >> 16, x & 0xFFFF]
+
+
+
 if __name__=="__main__":
     main()

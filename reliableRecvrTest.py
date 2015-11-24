@@ -25,24 +25,21 @@ def main():
 
 	start_time = time.time()
 	r = threading.Thread(target=relReceiver, args=(host, port, recvSock, 0, 0, 10))
+	r.daemon = True
 	r.start()
-	sys.exit()
 	print relRecv()
 	print relRecv()
-	#print relRecv()
-
-	#print relRecv()
-	#print relRecv()
-	#print relRecv()
-	#print relRecv()
+	sys.exit(0)
 
 def relRecv():
 	global mq
 	i = 0
 	while(mq.getSize() == 0):
 		i = 0
+	out = mq.dequeue()
+	return out
 
-	return mq.dequeue()
+
 
 def handshake(self_ip, self_port, client_ip, client_port, rcvr):
 	challenge = random_string()
@@ -131,15 +128,11 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 	authenticated_clients = []
 	i = 0
 	while True:
-		#print "waiting"
 		pack = packet.Packet()
 		packet_data, address = recvSocket.recvfrom(1024)
 		pack.createPacketFromString(packet_data)
 		source_ip = pack.sourceIP
 		source_port = pack.sourcePort
-		#print packet_data
-		#add check for authentication
-
 		if (synced is False):
 			if pack.isSYN():
 				print "HERE, RECEIVED SYN"
@@ -153,9 +146,7 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 					i = 0
 				print "AUTHENTICATED"
 				synced = True
-
-				continue
-
+				expectedSeqNum = 0
 		if pack.isFIN():
 			print "CLOSING HANDSHAKE"
 			if pack.isExpectedSeqNum(expectedSeqNum):
@@ -163,21 +154,14 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 				if exit:
 					print "EXITING?"
 					sys.exit()
-
-
 		packetIsFirst = pack.isFirst()
 		packetIsLast = pack.isLast()
-
-		#print "TIMESTAMP: "+str(pack.timeStamp)
-		#print "129"
-		if pack.isCorrupt():
+		if pack.isCorrupt() or packetDrop():
 			continue
-
 		if setFirst == False and packetIsFirst:
 			setFirst = True
 			currentMessage = ""
 			expectedSeqNum = pack.seqNum
-
 		if pack.isExpectedSeqNum(expectedSeqNum):
 			data = pack.payload
 			#print "DATA: %s" %(data) 
@@ -196,15 +180,12 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 					continue
 				deliverData(data)
 			expectedSeqNum += 1
-			if (isCorrupt(packet)):#simulates packets dropped on the way back
+			if (packetDrop()):#simulates packets dropped on the way back
 				continue
-<<<<<<< HEAD
-				
+
 			ackPacket = makePacket(selfIP, selfPort, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, 0, getReceiveWindow(), getCurrentTime(), "xxx")
 
-=======
-			ackPacket = makePacket(selfIP, selfPort, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, 0, getReceiveWindow(), 100000, "xxx")
->>>>>>> d8ad017a80618c403147c5c9ab8080a81659994c
+
 			recvSocket.sendto(ackPacket, addr)
 			#print "We got SEQ:"+ str(pack.seqNum)
 		elif not pack.isExpectedSeqNum(expectedSeqNum):
@@ -212,7 +193,7 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 			print "INCORRECT SEQ NUMBER"
 			print "Pack seq num: %s" %(str(pack.seqNum))
 			print "exptd seq num: %d" %(expectedSeqNum)
-			recvSocket.sendto(ackPacket, addr)
+			#recvSocket.sendto(ackPacket, addr)
 			continue
 		else:
 			#print "177"
@@ -236,7 +217,7 @@ def messageSplit(message, size):
 		i += size
 	return out
 
-def isCorrupt(packet):
+def packetDrop():
 	if (randomPacketDropping and random.random() > 0.97):
 		return True
 	return False
@@ -291,6 +272,7 @@ def pushDataRandomly():
 
 def getCurrentTime():
     global start_time
+    return 0
     return int((time.time() - start_time) * 1000)
 
 def makePacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload):
