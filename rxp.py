@@ -1,5 +1,5 @@
 
-import receiverAPI, senderAPI, connection, sys, socket, threading, time
+import receiverAPI, senderAPI, connection, sys, socket, threading, time, os
 
 
 def main():
@@ -13,7 +13,19 @@ def main():
 		print rxpObj.receive()
 		rxpObj.send("HOLY BOYS")
 		print rxpObj.receive()
+		
+		time.sleep(5)
+		print "lets have another go!"
+
+		rxpObj = RXP()
+		rxpObj.establish_server()
+		rxpObj.listen("127.0.0.1", 5007)
+		print rxpObj.receive()
+		print rxpObj.receive()
+		rxpObj.send("HOLY BOYS")
+		print rxpObj.receive()
 		sys.exit(0)
+
 	else:
 		rxpClient = RXP()
 		rxpClient.establish_client()
@@ -23,8 +35,24 @@ def main():
 		print rxpClient.receive()
 		rxpClient.send("FUCK TO THE YEAH AGAIN!")
 		rxpClient.close()
-		sys.exit(0)
+		del rxpClient.sender
+		del rxpClient
+		print "herro"
 
+		time.sleep(10)
+
+		rxpClient = RXP()
+		rxpClient.establish_client()
+		rxpClient.connect("127.0.0.1", 5007)
+		rxpClient.send("it is made by babies who've been captured")
+		rxpClient.send("and welcome to this world, have as much fun as you'd like, while helping others have as much fun as your having")
+		print rxpClient.receive()
+		rxpClient.send("MEEEEEEEEEEEEEEEEEHHHHHHHHHHHHH")
+		rxpClient.close()
+		del rxpClient.sender
+		del rxpClient
+		print "herro"
+		os._exit(0)
 
 
 class RXP:
@@ -36,13 +64,11 @@ class RXP:
 		self.receiveThread = None
 
 	def establish_client(self):
-
 		if (self.type != None):
 			return
 		self.type = "client"
 
 	def establish_server(self):
-
 		if (self.type != None):
 			return
 
@@ -82,7 +108,6 @@ class RXP:
 
 	def runReceiveThread(self):
 		self.receiver.relReceiver(self.conn)
-
 
 	def connect(self, ip, port):
 		if (self.type != "client"):

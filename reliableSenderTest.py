@@ -130,9 +130,7 @@ def relSender(sendSocket, data, base, nextSeqNumber, packetSize, timeout):
     baseBase = base
     recvSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     dataList = messageSplit(data, packetSize)
-    un_rel_rcvr = threading.Thread(target=unrelReceiver, args=(recvSocket, selfIP, selfPort))
-    un_rel_rcvr.daemon = True
-    un_rel_rcvr.start()
+
     firstsent = 1
     unAckedPackets = []
     while ackNum < len(dataList):
