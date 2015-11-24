@@ -52,6 +52,7 @@ class SenderAPI:
         self.killOther = False
         self.recvThreadSock = None
         self.recvThreadSockPort = 0
+        self.timeoutTime = 5
 
 
     def initRecvThreadSockPort(self, conn):
@@ -101,8 +102,8 @@ class SenderAPI:
             calculatedTimeout = .75 * calculatedTimeout + .25 * estimatedTimeout
 
         #print calculatedTimeout
-    def getReceiveWindow(self):
-        return 10
+    def getReceiveWindow(self, conn):
+        return conn.my_recvWindow
      
     def makePacket(self, sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload):
         return header.getPacket(sourceIP, sourcePort, destIP, destPort, seqNum, ackNum, sizeOfPayload, SYN, ACK, FIN, LAST, FIRST, recvWindow, timeStamp, payload)
@@ -127,7 +128,7 @@ class SenderAPI:
         syn_flag = 1
         send_packet = self.makePacket(
             self_ip, self_port, server_ip, server_port, 0, 0, 0, syn_flag, 0,
-            0, 0, 0, 0, conn.my_recvPort, '')
+            0, 0, 0, 5, conn.my_recvPort, '')
         syn_ack_rcvd = False
         challenge_resp = ''
         while not syn_ack_rcvd:
@@ -156,7 +157,7 @@ class SenderAPI:
             ack_flag = 1
             send_packet = self.makePacket(
                 server_ip, self_port, server_ip, server_port, 0, 0, 0, 0, ack_flag,
-                0, 0, 0, 0, conn.my_recvPort, challenge_resp)
+                0, 0, 0, 5, conn.my_recvPort, challenge_resp)
             send_socket.sendto(send_packet, (server_ip, server_port))
             send_time = time.time()
             print "Sent challenge_resp"
@@ -166,6 +167,8 @@ class SenderAPI:
                     rcvd_packet = ackQueue.get()
                     pack = packet.Packet()
                     pack.createPacketFromString(rcvd_packet)
+                    conn.peer_recvWindow = pack.recvWindow
+
                     print "ACK packet", 
                     print pack.packlist
                     if pack.isACK():
@@ -201,7 +204,7 @@ class SenderAPI:
         fin_flag = 1
         send_packet = self.makePacket(
             self_ip, self_port, server_ip, server_port, seq_num, seq_num, 0, 0, 0,
-            fin_flag, 0, 0, 0, 100000, '')
+            fin_flag, 0, 0, 5, 100000, '')
         ack_rcvd = False
         tries = 0
         while not ack_rcvd and tries < 10:
@@ -225,7 +228,7 @@ class SenderAPI:
             ack_flag = 1
             send_packet = self.makePacket(
                 self_ip, self_port, server_ip, server_port, seq_num, seq_num, 0, 0, ack_flag,
-                0, 0, 0, 0, 100000, '')
+                0, 0, 0, 5, 100000, '')
             send_socket.sendto(send_packet, (server_ip, server_port))
             print "RETURN TRUE"
             return True
@@ -243,7 +246,7 @@ class SenderAPI:
 
         ackQueue = self.ackQueue
         packetSize = 5
-        flowWindow = 5
+        flowWindow = 5 #conn.peer_recvWindow#
 
         if (self.recvThreadSock == None):
             print "NOOOO"
@@ -279,9 +282,13 @@ class SenderAPI:
                     last_packet = 1
                 sendPacket = self.makePacket(
                     selfIP, selfPort, peer_ip, peer_port, packetNumber, packetNumber,
-                    5, 0, 0, 0, last_packet, firstsent, self.getReceiveWindow(), self.getCurrentTime(), dataList[packetNumber]
+                    packetSize, 0, 0, 0, last_packet, firstsent, self.getReceiveWindow(conn), self.getCurrentTime(), dataList[packetNumber]
                     )
                 sendSocket.sendto(sendPacket, (peer_ip, peer_port))
+
+                #####TIMEOUT STUFF########
+                timeTracker[packetNumber] = time.time()
+                ##########################
 
                 #timeTracker[packetNumber] = self.getCurrentTime()
                 #print "TIME TRACKER:"+str(timeTracker[packetNumber])
@@ -303,7 +310,6 @@ class SenderAPI:
                 if timer and int(currentTime-timerStart) > 5:
                     #print "Timer timed out"
                     for packetNum in unAckedPackets:
-                        print unAckedPackets
                         #print "RE_Sending seqNum = %d" %(packetNum)
                         #print "RE-Sending: %s" %(dataList[packetNum])
 
@@ -316,7 +322,7 @@ class SenderAPI:
 
                         sendPacket = self.makePacket(
                             selfIP, selfPort, peer_ip, peer_port, packetNum,
-                            packetNum, 5, 0, 0, 0, last_packet, firstsent, self.getReceiveWindow(),
+                            packetNum, packetSize, 0, 0, 0, last_packet, firstsent, self.getReceiveWindow(conn),
                             self.getCurrentTime(), dataList[packetNum]
                             )
                             
@@ -336,15 +342,21 @@ class SenderAPI:
                         if not pack.isCorrupt():
                             #print "got ack! %d" %(pack.ackNum)
                             ackNum =  pack.ackNum
-                            flowWindow = 5 #max(pack.recvWindow/packetSize, 1)
+                            conn.peer_recvWindow = pack.recvWindow #max(pack.recvWindow/packetSize, 1)
                             #print "FLOW WINDOW:"+str(flowWindow)
                             #print timeTracker[ackNum - 1]
                             #self.updateTimeout(timeTracker[ackNum - 1])
-                            print "WE SHOULD UPDATE!"
+                            #print "WE SHOULD UPDATE!"
 
                             base = ackNum + 1
-                            print base
-                            print len(dataList)
+                            #print base
+                            #print len(dataList)
+
+                            ####UPDATE TIMEOUT#####
+                            if (ackNum in timeTracker):
+                                self.timeoutTime = (.25 * ((time.time() - timeTracker[ackNum]) * 100) + .75 * self.timeoutTime)
+                                print "TIMEOUT TIME:"+str(self.timeoutTime) 
+                            #######################
 
                             if ackNum in unAckedPackets:
                                 if unAckedPackets.index(ackNum) == (len(unAckedPackets) - 1):

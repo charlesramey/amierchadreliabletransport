@@ -38,7 +38,8 @@ class ReceiverAPI:
 	def __init__(self):
 		self.dq = dataqueue.DataQueue()
 		self.mq = dataqueue.MessageQueue()
-		self.randomPacketDropping = True
+		self.randomPacketDropping = False
+		self.randomWindowChange = True
 		self.start_time = 0
 		self.conn = None
 
@@ -53,6 +54,8 @@ class ReceiverAPI:
 			pack.createPacketFromString(packet_data)
 			source_ip = pack.sourceIP
 			source_port = pack.sourcePort
+
+
 			#print packet_data
 			#add check for authentication
 
@@ -89,7 +92,7 @@ class ReceiverAPI:
 		ack_flag = 1
 		send_packet = self.makePacket(
 	        self_ip, self_port, client_ip, client_port, 0, 0, 0, syn_flag, ack_flag,
-	        0, 0, 0, 0, conn.my_sendPort , challenge)
+	        0, 0, 0, 5, conn.my_sendPort , challenge)
 
 
 		sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -116,7 +119,7 @@ class ReceiverAPI:
 						#authenticate
 						send_packet = self.makePacket(
 	        				self_ip, self_port, client_ip, client_port, 0, 0, 0, 0, ack_flag,
-	        				0, 0, 0, 0, conn.my_sendPort, challenge)
+	        				0, 0, 0, 5, conn.my_sendPort, challenge)
 
 						sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 						sender.sendto(send_packet, (client_ip, client_port))
@@ -136,6 +139,12 @@ class ReceiverAPI:
 			return True
 		return False
 
+	def windowChange(self, conn):
+
+		if (self.randomWindowChange and random.random() > 0.1):
+			conn.my_recvWindow = int(random.random() * 10) + 1
+			#print "YUH"
+			#print conn.my_recvWindow
 
 	def filterPacket(self, pack, conn):
 		return False
@@ -180,9 +189,8 @@ class ReceiverAPI:
 				out += str(x)
 		return out
 
-	def getReceiveWindow(self):
-		dq = self.dq
-		return dq.getFreeSpace()
+	def getReceiveWindow(self, conn):
+		return conn.my_recvWindow
 
 
 	def dataDeliverable(self):
@@ -213,7 +221,7 @@ class ReceiverAPI:
 		sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		send_packet = self.makePacket(
 	        self_ip, self_port, client_ip, client_port, 0, 0, 0, 0, ack_flag,
-	        fin_flag, 0, 0, 0, 100000, 'FIN ACK')
+	        fin_flag, 0, 0, 5, 100000, 'FIN ACK')
 		sender.sendto(send_packet, (client_ip, client_port))
 		ack_rcvd = False
 		attempts = 0
@@ -229,7 +237,7 @@ class ReceiverAPI:
 					print "IM DONE, YO!"
 					send_packet = self.makePacket(
 	        			self_ip, self_port, client_ip, client_port, 0, 0, 0, 0, ack_flag,
-	        			0, 0, 0, 0, 100000, 'ACK')
+	        			0, 0, 0, 5, 100000, 'ACK')
 					sender.sendto(send_packet, (client_ip, client_port))
 					ack_rcvd = True
 			except socket.timeout:
@@ -269,8 +277,11 @@ class ReceiverAPI:
 			pack.createPacketFromString(packet_data)
 			source_ip = pack.sourceIP
 			source_port = pack.sourcePort
+			conn.peer_recvWindow = pack.recvWindow
 			#print packet_data
 			#add check for authentication
+
+			self.windowChange(conn)
 
 			if pack.isFIN():
 				print "CLOSING HANDSHAKE"
@@ -285,8 +296,8 @@ class ReceiverAPI:
 			packetIsFirst = pack.isFirst()
 			packetIsLast = pack.isLast()
 
-			print "GOT DATA: %s" %(pack.payload) 
-			print "SEQ: "+str(pack.seqNum)
+			#print "GOT DATA: %s" %(pack.payload) 
+			#print "SEQ: "+str(pack.seqNum)
 			#print "TIMESTAMP: "+str(pack.timeStamp)
 			#print "129"
 			if pack.isCorrupt() or self.filterPacket(pack, conn) or self.packetDrop():
@@ -301,8 +312,9 @@ class ReceiverAPI:
 
 			if pack.isExpectedSeqNum(expectedSeqNum):
 				data = pack.payload
-				print "DATA: %s" %(data) 
-				print "SEQ: "+str(pack.seqNum)
+
+				#print "DATA: %s" %(data) 
+				#print "SEQ: "+str(pack.seqNum)
 				receivedSeqNum = pack.seqNum
 				
 
@@ -325,7 +337,7 @@ class ReceiverAPI:
 				if (self.packetDrop()):#simulates packets dropped on the way back
 					continue
 
-				ackPacket = self.makePacket(selfIP, selfPort, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, 0, self.getReceiveWindow(), self.getCurrentTime(), "xxx")
+				ackPacket = self.makePacket(selfIP, selfPort, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, 0, self.getReceiveWindow(conn), self.getCurrentTime(), "xxx")
 				recvSocket.sendto(ackPacket, addr)
 				#print "We got SEQ:"+ str(pack.seqNum)
 			elif not pack.isExpectedSeqNum(expectedSeqNum):

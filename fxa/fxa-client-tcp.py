@@ -1,5 +1,4 @@
-import socket, threading, fileHandler, sys
-sys.path.insert(0, '../rxp')
+import socket, threading, fileHandler
 
 commSock = None
 
@@ -13,8 +12,6 @@ def main():
 	host = '127.0.0.1'
 	port = 56000
 
-	rxpObj = rxp.RXP()
-	rxpObj.establish_client()
 	global commSock
 	setupClient(host, port)
 

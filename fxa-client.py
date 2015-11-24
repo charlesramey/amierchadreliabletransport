@@ -1,5 +1,4 @@
-import socket, threading, fileHandler, sys
-sys.path.insert(0, '../rxp')
+import socket, threading, fileHandler, sys, rxp
 
 commSock = None
 
@@ -13,8 +12,7 @@ def main():
 	host = '127.0.0.1'
 	port = 56000
 
-	rxpObj = rxp.RXP()
-	rxpObj.establish_client()
+
 	global commSock
 	setupClient(host, port)
 
@@ -149,8 +147,10 @@ def verifyCommand():
 def setupClient(host, port):
 
 	global commSock
-	commSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	commSock.connect((host, port))
+
+	commSock = rxp.RXP()
+	commSock.establish_client()
+	commSock.connect(host, port)
 
 
 def setWindow():
@@ -168,7 +168,7 @@ def terminate():
 
 def rxpRecv():
 	global commSock
-	return commSock.recv(1024)
+	return commSock.receive()
 
 def rxpSend(data):
 	global commSock

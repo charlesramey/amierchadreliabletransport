@@ -123,6 +123,7 @@ class RXP:
 
 		potentialConnection.peer_ip = ip
 		potentialConnection.peer_recvPort = port
+		print "OUUUUU:"+str(port)
 
 
 		self.sender = senderAPI.SenderAPI()
@@ -139,7 +140,7 @@ class RXP:
 
 	def send(self, message):
 		self.sender.relSender(self.conn, message)
-		
+
 
 	def receive(self):
 		return self.receiver.relRecv()
