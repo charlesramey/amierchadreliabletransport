@@ -25,26 +25,19 @@ def main():
 
 	start_time = time.time()
 	r = threading.Thread(target=relReceiver, args=(host, port, recvSock, 0, 0, 10))
+	r.daemon = True
 	r.start()
 	print relRecv()
 	print relRecv()
-	#print relRecv()
-
-	#print relRecv()
-	#print relRecv()
-	#print relRecv()
-	#print relRecv()
+	sys.exit(0)
 
 def relRecv():
 	global mq
 	i = 0
 	while(mq.getSize() == 0):
 		i = 0
-
 	out = mq.dequeue()
 	return out
-
-
 
 def handshake(self_ip, self_port, client_ip, client_port, rcvr):
 	challenge = random_string()
@@ -133,15 +126,11 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 	authenticated_clients = []
 	i = 0
 	while True:
-		#print "waiting"
 		pack = packet.Packet()
 		packet_data, address = recvSocket.recvfrom(1024)
 		pack.createPacketFromString(packet_data)
 		source_ip = pack.sourceIP
 		source_port = pack.sourcePort
-		#print packet_data
-		#add check for authentication
-
 		if (synced is False):
 			if pack.isSYN():
 				print "HERE, RECEIVED SYN"
@@ -156,7 +145,6 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 				print "AUTHENTICATED"
 				synced = True
 				continue
-
 		if pack.isFIN():
 			print "CLOSING HANDSHAKE"
 			if pack.isExpectedSeqNum(expectedSeqNum):
@@ -164,21 +152,15 @@ def relReceiver(selfIP, selfPort, recvSocket, base, sequenceNumber, packetSize):
 				if exit:
 					print "EXITING?"
 					sys.exit()
-
-
 		packetIsFirst = pack.isFirst()
 		packetIsLast = pack.isLast()
 
-		#print "TIMESTAMP: "+str(pack.timeStamp)
-		#print "129"
 		if pack.isCorrupt() or packetDrop():
 			continue
-
 		if setFirst == False and packetIsFirst:
 			setFirst = True
 			currentMessage = ""
 			expectedSeqNum = pack.seqNum
-
 		if pack.isExpectedSeqNum(expectedSeqNum):
 			data = pack.payload
 			print "DATA: %s" %(data) 
