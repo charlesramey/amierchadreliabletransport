@@ -47,7 +47,6 @@ class ReceiverAPI:
 
 	def findSendSocket(self, selfIP):
 		####get an odd number port####
-
 		while 1:
 			try:
 
@@ -95,6 +94,7 @@ class ReceiverAPI:
 				sendSocket = self.findSendSocket(selfIP)
 				conn.my_sendPort = sendSocket.getsockname()[1]
 				conn.sendSocket = sendSocket
+				conn.peer_recvPort = conn.my_sendPort + 1
 
 				print "HERE, RECEIVED SYN"
 				authenticated = self.handshake(selfIP, selfPort, source_ip, source_port, recvSocket, conn)
@@ -108,6 +108,7 @@ class ReceiverAPI:
 
 					print "AUTHENTICATED"
 					##############################
+
 					conn.recvSocket = recvSocket
 					conn.status = True
 					##############################

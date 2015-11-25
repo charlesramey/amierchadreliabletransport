@@ -13,8 +13,8 @@ def main():
 		print rxpObj.receive()
 		rxpObj.send("HOLY BOYS")
 		print rxpObj.receive()
-		
-		time.sleep(5)
+
+		time.sleep(2)
 		print "lets have another go!"
 
 		rxpObj = RXP()
@@ -38,8 +38,7 @@ def main():
 		del rxpClient.sender
 		del rxpClient
 
-		return
-		time.sleep(10)
+		time.sleep(4)
 
 		rxpClient = RXP()
 		rxpClient.establish_client()
@@ -111,9 +110,10 @@ class RXP:
 		if (self.type != "client"):
 			print "This is not a client. Cannot connect."
 			sys.exit(0)
+		
 		try:
 			sendSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-			sendSock.bind(('0.0.0.0', port-1))
+			sendSock.bind(('127.0.0.1', port-1))
 		except:
 			print "Could Not Bind! Exiting."
 			sys.exit(0)

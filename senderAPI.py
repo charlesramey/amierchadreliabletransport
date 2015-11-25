@@ -1,4 +1,4 @@
-import threading, socket, header, time, Queue, packet, hashlib, sys, connection
+import threading, socket, header, time, Queue, packet, hashlib, sys, connection, os
 
 server_ip = '127.0.0.1'
 server_port = 5007
@@ -31,11 +31,11 @@ class SenderAPI:
         self.ackQueue = Queue.Queue()
         self.start_time = 0
         self.unrel_rcvr_stop = False
-        self.killOther = False
+        self.killThreads = False
         self.timeoutTime = 5
         self.ackReceiveRunning = False
-        self.recvThreadSock = None
-        self.recvThreadSockPort = 0
+        #self.recvThreadSock = None
+        #self.recvThreadSockPort = 0
 
 
 
@@ -57,11 +57,20 @@ class SenderAPI:
 
         self.ackReceiveRunning = True
         ackQueue = self.ackQueue
+        sock.settimeout(2)
         print sock.getsockname()
 
         while True:
-            data, addr = sock.recvfrom(1024)
-            ackQueue.put(data)
+            try:
+                data, addr = sock.recvfrom(1024)
+                ackQueue.put(data)
+            except:
+
+                if (self.killThreads):
+                    sock.close()
+                    return
+                continue
+
 
         print "unrelReceiver exiting"
      
@@ -238,8 +247,13 @@ class SenderAPI:
             self.sendMessage(conn, send_packet)
             print "RETURN TRUE"
             print "BLERGH"
+
+            self.killThreads = True
+            time.sleep(3)
+            #os._exit(0)
+
             return True
-            os._exit(0)
+            
         else:
             print "MEEHHHHHH"
             return False
@@ -260,12 +274,12 @@ class SenderAPI:
         ackQueue = self.ackQueue
         packetSize = 5
         flowWindow = 5 #conn.peer_recvWindow#
-        if (self.recvThreadSock == None):
-            print "NOOOO"
-            self.initRecvThreadSockPort(conn)
-        recvSocket = self.recvThreadSock
+        #if (self.recvThreadSock == None):
+        #    print "NOOOO"
+        #    self.initRecvThreadSockPort(conn)
+        #recvSocket = self.recvThreadSock
         selfIP = conn.ip
-        selfPort = self.recvThreadSockPort
+        #selfPort = self.recvThreadSockPort
         timer = False
         ackNum = -1
         sent = 0
@@ -340,7 +354,7 @@ class SenderAPI:
                             ackNum =  pack.ackNum
                             conn.peer_recvWindow = pack.recvWindow #max(pack.recvWindow/packetSize, 1)
                             base = ackNum + 1
-                            self.updateTimeout(ackNum)
+                            self.updateTimeout(ackNum, timeTracker)
                             if ackNum in unAckedPackets:
                                 if unAckedPackets.index(ackNum) == (len(unAckedPackets) - 1):
                                     unAckedPackets.remove(ackNum)
