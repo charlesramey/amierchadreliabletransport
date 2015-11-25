@@ -16,7 +16,7 @@ class Connection:
 		self.status = False
 		self.killEverything = False
 
-		self.netEmu = False
+		self.netEmu = True
 		self.netEmuPort = 5000
 
 

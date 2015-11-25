@@ -112,7 +112,12 @@ class Packet:
 	def isCorrupt(self):
 		
 		enc = header.encodeHeader(self.sourceIP, self.sourcePort, self.destIP, self.destPort, self.seqNum, self.ackNum, self.payloadSize, self.SYN, self.ACK, self.FIN, self.LAST, self.FIRST, self.recvWindow, self.timeStamp)
-		return (header.convert32BitToString(header.calculateCheckSum(enc, self.payload)) != self.checksum)
+		out = (header.convert32BitToString(header.calculateCheckSum(enc, self.payload)) != self.checksum)
+		
+		if (out):
+			print "BIT ERROR DETECTED! Dropping."
+			print self.payload
+		return out
 
 	def isSYN(self):
 		if int(self.packlist[7]) == 1 and int(self.packlist[8]) == 0:

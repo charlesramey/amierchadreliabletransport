@@ -40,7 +40,7 @@ def main():
 		del rxpClient.sender
 		del rxpClient
 		
-
+		return
 		time.sleep(7)
 
 
@@ -117,7 +117,7 @@ class RXP:
 		
 		try:
 			sendSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-			sendSock.bind(('127.0.0.1', port-1))
+			sendSock.bind(('0.0.0.0', port-1))
 		except:
 			print "Could Not Bind! Exiting."
 			sys.exit(0)

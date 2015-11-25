@@ -162,7 +162,7 @@ class ReceiverAPI:
 
 
 	def packetDrop(self):
-		if (self.randomPacketDropping and random.random() > 0.95):
+		if (self.randomPacketDropping and random.random() > 0.9):
 			return True
 		return False
 
@@ -173,6 +173,12 @@ class ReceiverAPI:
 			#print conn.my_recvWindow
 
 	def filterPacket(self, pack, conn):
+
+		if (pack.sourceIP != conn.peer_ip or pack.sourcePort != conn.peer_sendPort):
+			print "ROGUE PACKET RECEIVED. DROPPING THE FOLLOWING:"
+			print pack.payload
+			return True
+
 		return False
 
 
@@ -309,6 +315,7 @@ class ReceiverAPI:
 		addr = None
 		currentMessage = ""
 		authenticated_clients = []
+		packet_data = None
 		i = 0
 		while True:
 			#print "waiting"
@@ -321,6 +328,7 @@ class ReceiverAPI:
 					print "KILLED RECEIVE SOCKET"
 					recvSocket.close()
 					return
+				continue
 
 
 			pack.createPacketFromString(packet_data)
@@ -392,6 +400,7 @@ class ReceiverAPI:
 			elif not pack.isExpectedSeqNum(expectedSeqNum):
 				#print "170"
 				print "INCORRECT SEQ NUMBER"
+				print "DATA:"+str(pack.payload)
 				print "Pack seq num: %s" %(str(pack.seqNum))
 				print "exptd seq num: %d" %(expectedSeqNum)
 

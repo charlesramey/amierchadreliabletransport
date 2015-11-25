@@ -35,19 +35,6 @@ class SenderAPI:
         self.timeoutTime = 5
         self.ackReceiveRunning = False
         self.timeTracker = {}
-        #self.recvThreadSock = None
-        #self.recvThreadSockPort = 0
-
-
-
-    def initRecvThreadSockPort(self, conn):
-        self.recvThreadSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            self.recvThreadSock.bind((conn.ip, 0))
-        except socket.error:
-            pass
-        self.recvThreadSockPort = self.recvThreadSock.getsockname()[1]
-
 
     def killReceiver(self, recvSock):
         self.killOther = True
@@ -98,7 +85,7 @@ class SenderAPI:
 
         if (ackNum in self.timeTracker):
             self.timeoutTime = min((.25 * ((time.time() - self.timeTracker[ackNum]) * 100) + .75 * self.timeoutTime), 4) + 1
-            print "TIMEOUT TIME:"+str(self.timeoutTime) 
+            #print "TIMEOUT TIME:"+str(self.timeoutTime) 
     
     def getReceiveWindow(self, conn):
         return conn.my_recvWindow
@@ -156,7 +143,7 @@ class SenderAPI:
                     pack.createPacketFromString(rcvd_packet)
                     print pack.packlist
                     if pack.isSYNACK():
-                        print "Got challenge"
+                        #print "Got challenge"
 
                         ###################################################
                         challengeInfo = header.unpackHandshakeInfo(pack.payload)
@@ -253,7 +240,7 @@ class SenderAPI:
                 0, 0, 0, 5, 100000, '')
             self.sendMessage(conn, send_packet)
             #print "RETURN TRUE"
-            print "BLERGH"
+            print "CLOSED"
 
             conn.killEverything = True
             #conn.sendSocket.settimeout(1)
@@ -280,12 +267,7 @@ class SenderAPI:
         ackQueue = self.ackQueue
         packetSize = 5
         flowWindow = 5 #conn.peer_recvWindow#
-        #if (self.recvThreadSock == None):
-        #    print "NOOOO"
-        #    self.initRecvThreadSockPort(conn)
-        #recvSocket = self.recvThreadSock
         selfIP = conn.ip
-        #selfPort = self.recvThreadSockPort
         timer = False
         ackNum = -1
         sent = 0
@@ -359,7 +341,8 @@ class SenderAPI:
                         if not pack.isCorrupt():
                             ackNum =  pack.ackNum
                             conn.peer_recvWindow = pack.recvWindow #max(pack.recvWindow/packetSize, 1)
-                            base = ackNum + 1
+                            base = max(ackNum, base)
+                            print "BASE IS"+str(base)
                             
                             if ackNum in unAckedPackets:
                                 if unAckedPackets.index(ackNum) == (len(unAckedPackets) - 1):
@@ -369,10 +352,6 @@ class SenderAPI:
                         if base >= nextSeqNumber and ackNum >= len(dataList):
                             timer = False
                             ackQueue.queue.clear()
-                            self.recvThreadSock = None
-                            if not self.recvThreadSock:
-                                print "SET TO NONE"
-                            continue
                         else:
                             print "restarting timer"
                             timer = True
