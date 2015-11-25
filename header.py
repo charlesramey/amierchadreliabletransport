@@ -209,14 +209,18 @@ def calculateCheckSum(a, b):
 
 
 
-def packTwo16(a, b):
-	return (a << 16) | b
+def packHandshakeInfo(challenge, sendPort, receivePort):
+	return challenge+""+str(sendPort)+","+str(receivePort)
 
+def unpackHandshakeInfo(hsString):
+	out = []
+	out.append(hsString[0 : 10])
 
-def unpackTwo16(x):
-	return [x >> 16, x & 0xFFFF]
+	split = hsString[10:].split(",")
+	out.append(split[0])
+	out.append(split[1])
 
-
+	return out
 
 if __name__=="__main__":
     main()

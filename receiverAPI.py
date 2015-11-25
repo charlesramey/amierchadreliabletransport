@@ -43,6 +43,39 @@ class ReceiverAPI:
 		self.start_time = 0
 		self.conn = None
 
+
+
+	def findSendSocket(self, selfIP):
+		####get an odd number port####
+
+		while 1:
+			try:
+
+				potentialSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+				potentialSocket.bind((selfIP, 0))
+
+				if (potentialSocket.getsockname()[1] % 2 == 0):
+					return potentialSocket
+				potentialSocket.close()
+			except:
+				continue
+
+	def sendMessage(self, conn, message):
+	    
+	    peer_ip = conn.peer_ip
+	    peer_port = conn.peer_sendPort
+	    self_ip = conn.ip
+
+	    my_ip = conn.ip
+	    my_socket = conn.recvSocket
+	    my_port = conn.my_recvPort
+
+	    if (conn.netEmu):
+	        my_socket.sendto(message, (my_ip, conn.netEmuPort))
+	    else:
+	        my_socket.sendto(message, (peer_ip, peer_port))
+
+
 	def listen(self, recvSocket, conn):
 		selfIP = conn.ip
 		selfPort = conn.my_recvPort
@@ -53,20 +86,28 @@ class ReceiverAPI:
 			pack.createPacketFromString(packet_data)
 			source_ip = pack.sourceIP
 			source_port = pack.sourcePort
+			conn.peer_ip = pack.sourceIP
+			conn.peer_sendPort = pack.sourcePort
 			#print packet_data
 			#add check for authentication
 			if pack.isSYN():
+
+				sendSocket = self.findSendSocket(selfIP)
+				conn.my_sendPort = sendSocket.getsockname()[1]
+				conn.sendSocket = sendSocket
+
 				print "HERE, RECEIVED SYN"
 				authenticated = self.handshake(selfIP, selfPort, source_ip, source_port, recvSocket, conn)
 				if authenticated:
 					#do stuff to record that client is authenticated
 					recvSocket.close()
+
 					recvSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 					recvSocket.bind((selfIP, selfPort))
+
+
 					print "AUTHENTICATED"
 					##############################
-					conn.peer_ip = source_ip
-					conn.peer_sendPort = address[1]
 					conn.recvSocket = recvSocket
 					conn.status = True
 					##############################
@@ -80,11 +121,14 @@ class ReceiverAPI:
 		hashed_challenge = hashlib.md5(challenge).hexdigest()
 		syn_flag = 1
 		ack_flag = 1
+
+		challengeToSend = header.packHandshakeInfo(challenge, conn.my_sendPort, conn.my_recvPort)
+
 		send_packet = self.makePacket(
 	        self_ip, self_port, client_ip, client_port, 0, 0, 0, syn_flag, ack_flag,
-	        0, 0, 0, 5, conn.my_sendPort , challenge)
-		sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		sender.sendto(send_packet, (client_ip, client_port))
+	        0, 0, 0, 5, conn.my_sendPort , challengeToSend)
+
+		self.sendMessage(conn, send_packet)
 		challenge_rcvd = False
 		attempts = 0
 		while not challenge_rcvd and attempts < 3:
@@ -99,19 +143,18 @@ class ReceiverAPI:
 					print "PACKET WAS ACK"
 					print pack.payload
 					print hashed_challenge
-					conn.peer_recvPort = pack.timeStamp
 					if pack.payload == hashed_challenge:
 						#authenticate
 						send_packet = self.makePacket(
 	        				self_ip, self_port, client_ip, client_port, 0, 0, 0, 0, ack_flag,
-	        				0, 0, 0, 5, conn.my_sendPort, challenge)
-						sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-						sender.sendto(send_packet, (client_ip, client_port))
+	        				0, 0, 0, 5, conn.my_sendPort, challengeToSend)
+
+						self.sendMessage(conn, send_packet)
 						challenge_rcvd = True
 						print "AUTHENTICATED, YAY"
 						break
 			except socket.timeout:
-				sender.sendto(send_packet, (client_ip, client_port))
+				self.sendMessage(conn, send_packet)
 				attempts += 1
 				continue
 		return challenge_rcvd
@@ -198,14 +241,15 @@ class ReceiverAPI:
 		return header.decodePacket(packet)
 
 
-	def close(self, self_ip, self_port, client_ip, client_port, rcvr):
+	def close(self, self_ip, self_port, client_ip, client_port, rcvr, conn):
 		ack_flag = 1
 		fin_flag = 1
-		sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
 		send_packet = self.makePacket(
 	        self_ip, self_port, client_ip, client_port, 0, 0, 0, 0, ack_flag,
 	        fin_flag, 0, 0, 5, 100000, 'FIN ACK')
-		sender.sendto(send_packet, (client_ip, client_port))
+
+		self.sendMessage(conn, send_packet)
 		print "SENDING FIN ACK TO"+str(client_port)
 		ack_rcvd = False
 		attempts = 0
@@ -222,11 +266,11 @@ class ReceiverAPI:
 					send_packet = self.makePacket(
 	        			self_ip, self_port, client_ip, client_port, 0, 0, 0, 0, ack_flag,
 	        			0, 0, 0, 5, 100000, 'ACK')
-					sender.sendto(send_packet, (client_ip, client_port))
+					self.sendMessage(conn, send_packet)
 					print "SENDING ACK TO"
 					ack_rcvd = True
 			except socket.timeout:
-				sender.sendto(send_packet, (client_ip, client_port))
+				self.sendMessage(conn, send_packet)
 				attempts += 1
 				continue
 		print "returning"
@@ -235,7 +279,9 @@ class ReceiverAPI:
 	def random_string(self):
 		#creates a random string 10 characters long from a character set containing
 		#upper case ascii, lower case ascii, and digits
-		return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))	
+		out = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))	
+		print "CHALLENGE:"+str(out)
+		return out
 
 	def relReceiver(self, conn):
 
@@ -272,7 +318,7 @@ class ReceiverAPI:
 				print "CLOSING HANDSHAKE"
 				expectedSeqNum = 0
 				if pack.isExpectedSeqNum(expectedSeqNum):
-					exit = self.close(selfIP, selfPort, source_ip, source_port, recvSocket)
+					exit = self.close(selfIP, selfPort, source_ip, source_port, recvSocket, conn)
 					if exit:
 						print "EXITING?"
 						sys.exit(0)
@@ -323,7 +369,7 @@ class ReceiverAPI:
 					continue
 
 				ackPacket = self.makePacket(selfIP, selfPort, addr[0], addr[1], 0, expectedSeqNum, 10, 0, 1, 0, 0, 0, self.getReceiveWindow(conn), self.getCurrentTime(), "xxx")
-				recvSocket.sendto(ackPacket, addr)
+				self.sendMessage(conn, ackPacket)
 				#print "We got SEQ:"+ str(pack.seqNum)
 			elif not pack.isExpectedSeqNum(expectedSeqNum):
 				#print "170"
@@ -333,11 +379,11 @@ class ReceiverAPI:
 
 				if (ackPacket == None):
 					continue	
-				recvSocket.sendto(ackPacket, addr)
+				self.sendMessage(conn, ackPacket)
 			else:
 				#print "177"
 				if (setFirst) and addr:
-					recvSocket.sendto(ackPacket, addr)
+					self.sendMessage(conn, ackPacket)
 
 
 

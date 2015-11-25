@@ -37,14 +37,8 @@ def main():
 		rxpClient.close()
 		del rxpClient.sender
 		del rxpClient
-<<<<<<< HEAD
 
-		print "herro"
 		return
-=======
-		print "herro"
-
->>>>>>> 5cc89efe5d8da3e544041c2d33c4aecc7631b7cd
 		time.sleep(10)
 
 		rxpClient = RXP()
@@ -88,20 +82,18 @@ class RXP:
 		try:
 			recvSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 			recvSock.bind((ip, port))
-
-			sendSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-			sendSock.bind((ip, 0))
 		except:
 			print "Could Not Bind! Exiting."
 			sys.exit(0)
+
 		potentialConnection = connection.Connection()
 		potentialConnection.ip = ip
 		potentialConnection.my_recvPort = port
-		potentialConnection.my_sendPort = sendSock.getsockname()[1]
 		potentialConnection.recvSocket = recvSock
-		potentialConnection.sendSocket = sendSock
+
 		self.receiver = receiverAPI.ReceiverAPI()
 		self.receiver.listen(recvSock, potentialConnection)
+
 		if (potentialConnection.status == False):
 			print "Listen Timed Out. Exiting."
 			sys.exit(0)
@@ -121,26 +113,26 @@ class RXP:
 			sys.exit(0)
 		try:
 			sendSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-			sendSock.bind(('0.0.0.0', 0))
-			recvSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-			recvSock.bind(('0.0.0.0', 0))
+			sendSock.bind(('0.0.0.0', port-1))
 		except:
 			print "Could Not Bind! Exiting."
 			sys.exit(0)
+
 		potentialConnection = connection.Connection()
 		potentialConnection.ip = '127.0.0.1' ##THIS CAUSES PROBLEMS WHEN TRYING TO CONNECT TO LOCALHOST
-		potentialConnection.my_recvPort = recvSock.getsockname()[1]	###CHECK THIS AGAIN
+
 		potentialConnection.my_sendPort = sendSock.getsockname()[1]
-		potentialConnection.recvSocket = recvSock
 		potentialConnection.sendSocket = sendSock
+
 		potentialConnection.peer_ip = ip
 		potentialConnection.peer_recvPort = port
-		print "OUUUUU:"+str(port)
+
 		self.sender = senderAPI.SenderAPI()
 		self.conn = self.sender.handshake(potentialConnection)
 		if (self.conn == None):
 			print "Could Not Connect. Exiting"
 			sys.exit(0)
+
 		self.receiver = receiverAPI.ReceiverAPI()
 		r = threading.Thread(target=self.runReceiveThread)
 		r.start()
@@ -153,6 +145,8 @@ class RXP:
 
 	def close(self):
 		self.sender.close(self.conn)
+
+
 
 
 if __name__=="__main__":
