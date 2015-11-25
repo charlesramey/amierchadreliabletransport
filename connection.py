@@ -14,6 +14,7 @@ class Connection:
 		self.my_recvWindow = 5
 		self.peer_recvWindow = 5
 		self.status = False
+		self.killEverything = False
 
 		self.netEmu = False
 		self.netEmuPort = 5000

@@ -34,6 +34,7 @@ class SenderAPI:
         self.killThreads = False
         self.timeoutTime = 5
         self.ackReceiveRunning = False
+        self.timeTracker = {}
         #self.recvThreadSock = None
         #self.recvThreadSockPort = 0
 
@@ -52,21 +53,27 @@ class SenderAPI:
         self.killOther = True
         recvSock.setblocking(0)
 
-    def unrelReceiver(self, sock, ip):
+    def unrelReceiver(self, sock, conn):
         global unrel_rcvr_stop
 
         self.ackReceiveRunning = True
         ackQueue = self.ackQueue
-        sock.settimeout(2)
+        sock.settimeout(1)
         print sock.getsockname()
 
         while True:
             try:
                 data, addr = sock.recvfrom(1024)
                 ackQueue.put(data)
+                ###############UPDATE TIMEOUT HERE#######
+                pack = packet.Packet()
+                pack.createPacketFromString(data)
+                self.updateTimeout(pack.ackNum)
+                #########################################
             except:
 
-                if (self.killThreads):
+                if (conn.killEverything):
+                    print "KILLED SENDER SOCKET"
                     sock.close()
                     return
                 continue
@@ -87,10 +94,10 @@ class SenderAPI:
         return 0
         return int((time.time() - start_time) * 1000)
 
-    def updateTimeout(self, ackNum, timeTracker):
+    def updateTimeout(self, ackNum):
 
-        if (ackNum in timeTracker):
-            self.timeoutTime = (.25 * ((time.time() - timeTracker[ackNum]) * 100) + .75 * self.timeoutTime)
+        if (ackNum in self.timeTracker):
+            self.timeoutTime = min((.25 * ((time.time() - self.timeTracker[ackNum]) * 100) + .75 * self.timeoutTime), 4) + 1
             print "TIMEOUT TIME:"+str(self.timeoutTime) 
     
     def getReceiveWindow(self, conn):
@@ -126,7 +133,7 @@ class SenderAPI:
         my_socket = conn.sendSocket
         my_port = conn.my_sendPort
 
-        rcvr = threading.Thread(target=self.unrelReceiver, args=(my_socket, my_ip))
+        rcvr = threading.Thread(target=self.unrelReceiver, args=(my_socket, conn))
 
         rcvr.daemon = True
         rcvr.start()
@@ -245,12 +252,12 @@ class SenderAPI:
                 my_ip, my_port, server_ip, server_port, seq_num, seq_num, 0, 0, ack_flag,
                 0, 0, 0, 5, 100000, '')
             self.sendMessage(conn, send_packet)
-            print "RETURN TRUE"
+            #print "RETURN TRUE"
             print "BLERGH"
 
-            self.killThreads = True
-            time.sleep(3)
-            #os._exit(0)
+            conn.killEverything = True
+            #conn.sendSocket.settimeout(1)
+            #conn.recvSocket.settimeout(1)
 
             return True
             
@@ -259,7 +266,6 @@ class SenderAPI:
             return False
 
     def relSender(self, conn, data):
-        timeTracker = {}
 
 
         peer_ip = conn.peer_ip
@@ -291,7 +297,7 @@ class SenderAPI:
         base = 0
         dataList = self.messageSplit(data, packetSize)
 
-        un_rel_rcvr = threading.Thread(target=self.unrelReceiver, args=(my_socket, my_ip))
+        un_rel_rcvr = threading.Thread(target=self.unrelReceiver, args=(my_socket, conn))
         un_rel_rcvr.daemon = True
         un_rel_rcvr.start()
 
@@ -313,7 +319,7 @@ class SenderAPI:
 
                 self.sendMessage(conn, sendPacket)
                 #####TIMEOUT STUFF########
-                timeTracker[packetNumber] = time.time()
+                self.timeTracker[packetNumber] = time.time()
                 ##########################
                 unAckedPackets.append(packetNumber)
                 firstsent = 0
@@ -354,7 +360,7 @@ class SenderAPI:
                             ackNum =  pack.ackNum
                             conn.peer_recvWindow = pack.recvWindow #max(pack.recvWindow/packetSize, 1)
                             base = ackNum + 1
-                            self.updateTimeout(ackNum, timeTracker)
+                            
                             if ackNum in unAckedPackets:
                                 if unAckedPackets.index(ackNum) == (len(unAckedPackets) - 1):
                                     unAckedPackets.remove(ackNum)

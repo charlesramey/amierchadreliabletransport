@@ -13,8 +13,10 @@ def main():
 		print rxpObj.receive()
 		rxpObj.send("HOLY BOYS")
 		print rxpObj.receive()
+		rxpObj.close()
 
-		time.sleep(2)
+
+		time.sleep(5)
 		print "lets have another go!"
 
 		rxpObj = RXP()
@@ -34,11 +36,13 @@ def main():
 		rxpClient.send("FUCK TO THE YEAH :D")
 		print rxpClient.receive()
 		rxpClient.send("FUCK TO THE YEAH AGAIN!")
-		rxpClient.close()
+		#rxpClient.close()
 		del rxpClient.sender
 		del rxpClient
+		
 
-		time.sleep(4)
+		time.sleep(7)
+
 
 		rxpClient = RXP()
 		rxpClient.establish_client()
@@ -51,7 +55,7 @@ def main():
 		del rxpClient.sender
 		del rxpClient
 		print "herro"
-		os._exit(0)
+		#os._exit(0)
 
 
 class RXP:
@@ -141,7 +145,7 @@ class RXP:
 		self.sender.relSender(self.conn, message)
 
 	def receive(self):
-		return self.receiver.relRecv()
+		return self.receiver.relRecv(self.conn)
 
 	def close(self):
 		self.sender.close(self.conn)

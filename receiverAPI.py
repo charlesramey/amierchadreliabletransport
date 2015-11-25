@@ -108,7 +108,6 @@ class ReceiverAPI:
 
 					print "AUTHENTICATED"
 					##############################
-
 					conn.recvSocket = recvSocket
 					conn.status = True
 					##############################
@@ -177,11 +176,15 @@ class ReceiverAPI:
 		return False
 
 
-	def relRecv(self):
+	def relRecv(self, conn):
 		mq = self.mq
 
 		i = 0
 		while(mq.getSize() == 0):
+
+			if (conn.killEverything == True):
+				return None
+
 			i = 0
 
 		out = mq.dequeue()
@@ -242,9 +245,10 @@ class ReceiverAPI:
 		return header.decodePacket(packet)
 
 
-	def close(self, self_ip, self_port, client_ip, client_port, rcvr, conn):
+	def close(self, self_ip, self_port, client_ip, client_port, conn):
 		ack_flag = 1
 		fin_flag = 1
+		rcvr = conn.recvSocket
 
 		send_packet = self.makePacket(
 	        self_ip, self_port, client_ip, client_port, 0, 0, 0, 0, ack_flag,
@@ -274,6 +278,11 @@ class ReceiverAPI:
 				self.sendMessage(conn, send_packet)
 				attempts += 1
 				continue
+
+		conn.killEverything = True
+		#conn.sendSocket.settimeout(1)
+		conn.recvSocket.settimeout(1)
+
 		print "returning"
 		return ack_rcvd
 
@@ -292,8 +301,7 @@ class ReceiverAPI:
 		selfIP = conn.ip
 		selfPort = conn.my_recvPort
 		recvSocket = conn.recvSocket
-
-
+		recvSocket.settimeout(1)
 
 		setFirst = False
 		expectedSeqNum = 0
@@ -305,7 +313,16 @@ class ReceiverAPI:
 		while True:
 			#print "waiting"
 			pack = packet.Packet()
-			packet_data, address = recvSocket.recvfrom(1024)
+
+			try:
+				packet_data, address = recvSocket.recvfrom(1024)
+			except:
+				if (conn.killEverything == True):
+					print "KILLED RECEIVE SOCKET"
+					recvSocket.close()
+					return
+
+
 			pack.createPacketFromString(packet_data)
 			source_ip = pack.sourceIP
 			source_port = pack.sourcePort
@@ -319,10 +336,10 @@ class ReceiverAPI:
 				print "CLOSING HANDSHAKE"
 				expectedSeqNum = 0
 				if pack.isExpectedSeqNum(expectedSeqNum):
-					exit = self.close(selfIP, selfPort, source_ip, source_port, recvSocket, conn)
+					exit = self.close(selfIP, selfPort, source_ip, source_port, conn)
 					if exit:
 						print "EXITING?"
-						sys.exit(0)
+						continue
 
 
 			packetIsFirst = pack.isFirst()
